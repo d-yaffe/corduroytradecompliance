@@ -10,15 +10,15 @@ interface AddProductModalProps {
 export function AddProductModal({ onClose, onSave, editingProduct }: AddProductModalProps) {
   const [step, setStep] = useState<'info' | 'classify'>('info');
   const [formData, setFormData] = useState({
-    name: editingProduct?.name || '',
-    sku: editingProduct?.sku || '',
-    description: editingProduct?.description || '',
-    materials: editingProduct?.materials || '',
-    origin: editingProduct?.origin || '',
-    cost: editingProduct?.cost || '',
-    vendor: editingProduct?.vendor || '',
+    name: editingProduct && editingProduct.name ? editingProduct.name : '',
+    sku: editingProduct && editingProduct.sku ? editingProduct.sku : '',
+    description: editingProduct && editingProduct.description ? editingProduct.description : '',
+    materials: editingProduct && editingProduct.materials ? editingProduct.materials : '',
+    origin: editingProduct && editingProduct.origin ? editingProduct.origin : '',
+    cost: editingProduct && editingProduct.cost ? editingProduct.cost : '',
+    vendor: editingProduct && editingProduct.vendor ? editingProduct.vendor : '',
   });
-  const [classification, setClassification] = useState(editingProduct?.hts ? {
+  const [classification, setClassification] = useState(editingProduct && editingProduct.hts ? {
     hts: editingProduct.hts,
     confidence: editingProduct.confidence,
     description: 'Product classification',
@@ -44,15 +44,15 @@ export function AddProductModal({ onClose, onSave, editingProduct }: AddProductM
 
   const handleSave = () => {
     const product = {
-      id: editingProduct?.id || Date.now(),
+      id: editingProduct && editingProduct.id ? editingProduct.id : Date.now(),
       name: formData.name,
       sku: formData.sku,
-      hts: classification?.hts || '',
+      hts: classification && classification.hts ? classification.hts : '',
       materials: formData.materials,
       origin: formData.origin,
       cost: formData.cost,
       vendor: formData.vendor,
-      confidence: classification?.confidence || 0,
+      confidence: classification && classification.confidence ? classification.confidence : 0,
       lastUpdated: new Date().toISOString().split('T')[0]
     };
     onSave(product);
@@ -222,24 +222,24 @@ export function AddProductModal({ onClose, onSave, editingProduct }: AddProductM
                   <h3 className="text-slate-900">AI Classification Result</h3>
                   <div className="flex items-center gap-2">
                     <span className="text-green-600 text-sm">Confidence:</span>
-                    <span className="text-green-900">{classification?.confidence}%</span>
+                    <span className="text-green-900">{classification && classification.confidence ? classification.confidence : 0}%</span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-4 p-4 bg-white rounded-lg">
                   <div>
                     <span className="text-slate-600 text-sm block mb-1">HTS Code</span>
-                    <span className="text-slate-900">{classification?.hts}</span>
+                    <span className="text-slate-900">{classification && classification.hts ? classification.hts : ''}</span>
                   </div>
                   <div>
                     <span className="text-slate-600 text-sm block mb-1">Tariff Rate</span>
-                    <span className="text-slate-900">{classification?.tariff}</span>
+                    <span className="text-slate-900">{classification && classification.tariff ? classification.tariff : ''}</span>
                   </div>
                 </div>
 
                 <div>
                   <span className="text-slate-600 text-sm block mb-2">Description</span>
-                  <p className="text-slate-700">{classification?.description}</p>
+                  <p className="text-slate-700">{classification && classification.description ? classification.description : ''}</p>
                 </div>
               </div>
 

@@ -74,7 +74,8 @@ export function UnifiedClassification() {
   };
 
   const getFileIcon = (fileName: string) => {
-    const ext = fileName.split('.').pop()?.toLowerCase();
+    const parts = fileName.split('.');
+    const ext = parts.length > 0 && parts[parts.length - 1] ? parts[parts.length - 1].toLowerCase() : '';
     if (ext === 'pdf') return <FileText className="w-4 h-4 text-red-600" />;
     if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') return <FileText className="w-4 h-4 text-green-600" />;
     if (ext === 'doc' || ext === 'docx') return <FileText className="w-4 h-4 text-blue-600" />;

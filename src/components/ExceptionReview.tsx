@@ -133,7 +133,9 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
           timestamp: 'Just now'
         };
         setChatMessages(prev => [...prev, confidenceMessage]);
-        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (chatEndRef.current) {
+          chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
       }, 1000);
     }
   };
@@ -218,7 +220,9 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
       };
 
       setChatMessages(prev => [...prev, assistantMessage]);
-      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      if (chatEndRef.current) {
+        chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
     }, 800);
 
     setChatInput('');
@@ -235,7 +239,9 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
       timestamp: 'Just now'
     };
     setChatMessages(prev => [...prev, uploadMessage]);
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
 
     // Simulate AI analyzing the uploaded document and update confidence
     setTimeout(() => {

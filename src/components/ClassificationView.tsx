@@ -58,7 +58,8 @@ export function ClassificationView() {
   };
 
   const getFileIcon = (fileName: string) => {
-    const ext = fileName.split('.').pop()?.toLowerCase();
+    const parts = fileName.split('.');
+    const ext = parts.length > 0 && parts[parts.length - 1] ? parts[parts.length - 1].toLowerCase() : '';
     if (ext === 'pdf') return <FileText className="w-4 h-4 text-red-600" />;
     if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') return <FileText className="w-4 h-4 text-green-600" />;
     if (ext === 'doc' || ext === 'docx') return <FileText className="w-4 h-4 text-blue-600" />;
@@ -124,7 +125,7 @@ export function ClassificationView() {
     };
 
     // Filter out the selected alternative and add the current one
-    const newAlternatives = result.alternatives?.filter(alt => alt.hts !== alternative.hts) || [];
+    const newAlternatives = result.alternatives && result.alternatives.filter ? result.alternatives.filter(alt => alt.hts !== alternative.hts) : [];
     newAlternatives.unshift(currentAsAlternative);
 
     // Update the result with the selected alternative as the main classification
@@ -246,7 +247,7 @@ export function ClassificationView() {
             >
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-blue-600" />
-                <span className="text-slate-900">Add Material Composition (Optional)</span>
+                <span className="text-slate-900">Add Product Details & Material Composition (Optional)</span>
                 <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">Improves Accuracy</span>
               </div>
               {showAdvanced ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
@@ -254,6 +255,45 @@ export function ClassificationView() {
 
             {showAdvanced && (
               <div className="mt-4 p-4 border border-slate-200 rounded-lg bg-slate-50 space-y-4">
+                {/* Product Details */}
+                <div>
+                  <h4 className="text-slate-900 mb-3">Product Details</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-slate-700 text-sm mb-1">SKU Number</label>
+                      <input
+                        type="text"
+                        value={sku}
+                        onChange={(e) => setSku(e.target.value)}
+                        placeholder="e.g., PROD-12345"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-slate-700 text-sm mb-1">Vendor Name</label>
+                      <input
+                        type="text"
+                        value={vendor}
+                        onChange={(e) => setVendor(e.target.value)}
+                        placeholder="e.g., TechSupply Co."
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-slate-700 text-sm mb-1">Product Cost</label>
+                      <input
+                        type="text"
+                        value={unitCost}
+                        onChange={(e) => setUnitCost(e.target.value)}
+                        placeholder="e.g., $12.50"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 {/* Material Composition */}
                 <div>
                   <div className="flex items-center justify-between mb-3">

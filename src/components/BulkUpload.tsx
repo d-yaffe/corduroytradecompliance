@@ -151,7 +151,8 @@ export function BulkUpload({ initialFile, initialSupportingFiles = [], autoStart
   };
 
   const getFileIcon = (fileName: string) => {
-    const ext = fileName.split('.').pop()?.toLowerCase();
+    const parts = fileName.split('.');
+    const ext = parts.length > 0 && parts[parts.length - 1] ? parts[parts.length - 1].toLowerCase() : '';
     if (ext === 'pdf') return <FileText className="w-4 h-4 text-red-600" />;
     if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') return <FileText className="w-4 h-4 text-green-600" />;
     if (ext === 'doc' || ext === 'docx') return <FileText className="w-4 h-4 text-blue-600" />;
@@ -352,6 +353,118 @@ export function BulkUpload({ initialFile, initialSupportingFiles = [], autoStart
         {/* Results */}
         {items.length > 0 && (
           <div className="space-y-6">
+            {/* AI Analysis Section - At Top of Results */}
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 border-b border-blue-500">
+                <div className="flex items-center gap-3">
+                  <div className="bg-white/20 p-2 rounded-lg">
+                    <Sparkles className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-white">AI Analysis</h3>
+                    <p className="text-blue-100 text-sm">File insights & classification summary</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 max-h-64 overflow-y-auto">
+                <div className="space-y-3">
+                  {/* Main File Analysis */}
+                  <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                    <p className="text-blue-900 text-sm mb-1">
+                      <strong>📄 Main File Detected:</strong>
+                    </p>
+                    <p className="text-blue-800 text-xs mb-1">
+                      {uploadedMainFile && uploadedMainFile.name.endsWith('.pdf') ? 'PDF document' : uploadedMainFile && uploadedMainFile.name.endsWith('.csv') ? 'CSV file' : 'Excel spreadsheet'} 
+                      {' with 8 product entries'}
+                    </p>
+                    <p className="text-blue-800 text-xs">
+                      Found columns: <span className="font-medium">Product Name, Description, Country of Origin, Materials, Unit Cost</span>
+                    </p>
+                    <p className="text-blue-700 text-xs mt-1">
+                      Products include electronics, textiles, and household items.
+                    </p>
+                  </div>
+
+                  {/* Classification Summary */}
+                  <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                    <p className="text-slate-900 text-sm mb-1">
+                      <strong>✅ Classification Complete:</strong>
+                    </p>
+                    <ul className="space-y-1 text-slate-700 text-xs">
+                      <li>• {stats.complete} products classified successfully</li>
+                      <li>• {stats.exceptions} exceptions need review</li>
+                      <li>• Average confidence: {Math.round(items.reduce((acc, i) => acc + (i.confidence || 0), 0) / items.length)}%</li>
+                    </ul>
+                  </div>
+
+                  {/* Supporting Files */}
+                  {supportingFiles.length > 0 && (
+                    <div className="bg-green-50 rounded-lg p-3 border border-green-100">
+                      <p className="text-green-900 text-sm mb-1">
+                        <strong>📎 Supporting Documents ({supportingFiles.length}):</strong>
+                      </p>
+                      <ul className="space-y-1">
+                        {supportingFiles.map((file, idx) => (
+                          <li key={idx} className="text-green-800 text-xs flex items-start gap-2">
+                            <span className="flex-shrink-0">•</span>
+                            <span className="truncate">
+                              {file.name} - {file.name.toLowerCase().includes('spec') || file.name.toLowerCase().includes('datasheet') ? 'Specifications' : file.name.toLowerCase().includes('bom') ? 'Bill of Materials' : 'Details'}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Suggestions */}
+                  {stats.exceptions > 0 && (
+                    <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
+                      <p className="text-amber-900 text-sm mb-1">
+                        <strong>💡 Suggestions:</strong>
+                      </p>
+                      <ul className="space-y-1 text-amber-800 text-xs">
+                        <li className="flex items-start gap-2">
+                          <span className="flex-shrink-0">•</span>
+                          <span>Review {stats.exceptions} exception{stats.exceptions > 1 ? 's' : ''} for low confidence scores</span>
+                        </li>
+                        {supportingFiles.length === 0 && (
+                          <li className="flex items-start gap-2">
+                            <span className="flex-shrink-0">•</span>
+                            <span>Adding spec sheets could improve accuracy</span>
+                          </li>
+                        )}
+                        <li className="flex items-start gap-2">
+                          <span className="flex-shrink-0">•</span>
+                          <span>Click any row to view alternative HTS codes</span>
+                        </li>
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Exception Review Prompt */}
+            {stats.exceptions > 0 && (
+              <div className="bg-gradient-to-r from-red-50 to-amber-50 rounded-xl p-5 border-2 border-red-200 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-red-100 p-3 rounded-lg">
+                      <AlertCircle className="w-6 h-6 text-red-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-red-900 mb-1">Action Required: {stats.exceptions} Exception{stats.exceptions > 1 ? 's' : ''} Need Review</h3>
+                      <p className="text-red-700 text-sm">
+                        Low confidence scores require your review before approval
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-red-700 font-medium whitespace-nowrap">Review Below ↓</span>
+                </div>
+              </div>
+            )}
+
             {/* Stats Summary */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="bg-white rounded-xl p-4 border border-slate-200">
@@ -549,120 +662,6 @@ export function BulkUpload({ initialFile, initialSupportingFiles = [], autoStart
           </div>
         )}
       </div>
-
-      {/* AI Chat Bubble - Bottom Right */}
-      {items.length > 0 && (
-        <div className="fixed bottom-6 right-6 z-50">
-          {aiChatOpen ? (
-            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-96 max-h-[600px] flex flex-col">
-              {/* Header */}
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-t-2xl p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="bg-white/20 p-2 rounded-lg">
-                    <Sparkles className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <h4 className="text-white">AI Analysis</h4>
-                    <p className="text-blue-100 text-xs">File insights & suggestions</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setAiChatOpen(false)}
-                  className="text-white/80 hover:text-white transition-colors p-1"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Content */}
-              <div className="p-4 overflow-y-auto flex-1">
-                <div className="space-y-3">
-                  {/* Main File Analysis */}
-                  <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
-                    <p className="text-blue-900 text-sm mb-2">
-                      <strong>📄 Main File Detected:</strong>
-                    </p>
-                    <p className="text-blue-800 text-sm mb-2">
-                      {uploadedMainFile?.name.endsWith('.pdf') ? 'PDF document' : uploadedMainFile?.name.endsWith('.csv') ? 'CSV file' : 'Excel spreadsheet'} 
-                      {' with 8 product entries'}
-                    </p>
-                    <p className="text-blue-800 text-sm">
-                      Found columns: <span className="font-medium">Product Name, Description, Country of Origin, Materials, Unit Cost</span>
-                    </p>
-                    <p className="text-blue-700 text-sm mt-2">
-                      Products include electronics, textiles, and household items.
-                    </p>
-                  </div>
-
-                  {/* Supporting Files */}
-                  {supportingFiles.length > 0 && (
-                    <div className="bg-green-50 rounded-lg p-3 border border-green-100">
-                      <p className="text-green-900 text-sm mb-2">
-                        <strong>📎 Supporting Documents ({supportingFiles.length}):</strong>
-                      </p>
-                      <ul className="space-y-1">
-                        {supportingFiles.map((file, idx) => (
-                          <li key={idx} className="text-green-800 text-sm flex items-start gap-2">
-                            <span className="flex-shrink-0">•</span>
-                            <span className="text-xs">
-                              {file.name} - {file.name.toLowerCase().includes('spec') || file.name.toLowerCase().includes('datasheet') ? 'Specifications' : file.name.toLowerCase().includes('bom') ? 'Bill of Materials' : 'Details'}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {/* Classification Summary */}
-                  <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
-                    <p className="text-slate-900 text-sm mb-2">
-                      <strong>✅ Classification Complete:</strong>
-                    </p>
-                    <ul className="space-y-1 text-slate-700 text-sm">
-                      <li>• {stats.complete} products classified successfully</li>
-                      <li>• {stats.exceptions} exceptions need review</li>
-                      <li>• Average confidence: {Math.round(items.reduce((acc, i) => acc + (i.confidence || 0), 0) / items.length)}%</li>
-                    </ul>
-                  </div>
-
-                  {/* Suggestions */}
-                  {stats.exceptions > 0 && (
-                    <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
-                      <p className="text-amber-900 text-sm mb-2">
-                        <strong>💡 Suggestions:</strong>
-                      </p>
-                      <ul className="space-y-1 text-amber-800 text-sm">
-                        <li className="flex items-start gap-2">
-                          <span className="flex-shrink-0">•</span>
-                          <span>Review {stats.exceptions} exception{stats.exceptions > 1 ? 's' : ''} for low confidence scores</span>
-                        </li>
-                        {supportingFiles.length === 0 && (
-                          <li className="flex items-start gap-2">
-                            <span className="flex-shrink-0">•</span>
-                            <span>Adding spec sheets could improve accuracy</span>
-                          </li>
-                        )}
-                        <li className="flex items-start gap-2">
-                          <span className="flex-shrink-0">•</span>
-                          <span>Click any row to view alternative HTS codes</span>
-                        </li>
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setAiChatOpen(true)}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full p-4 shadow-2xl hover:shadow-3xl transition-all hover:scale-110 flex items-center gap-2"
-            >
-              <Sparkles className="w-6 h-6" />
-              <span className="pr-1">AI Insights</span>
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Modals */}
       {selectedItem && (

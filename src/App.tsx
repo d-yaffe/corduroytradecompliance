@@ -108,19 +108,19 @@ export default function App() {
   if (isAuthenticated && showWelcome) {
     return (
       <WelcomeScreen
-        userName={user?.firstName || user?.email?.split('@')[0] || 'there'}
-        company={user?.company}
+        userName={user && user.firstName ? user.firstName : (user && user.email ? user.email.split('@')[0] : 'there')}
+        company={user && user.company ? user.company : undefined}
         onGetStarted={() => setShowWelcome(false)}
       />
     );
   }
 
   // Show onboarding flow for new users
-  if (isAuthenticated && !user?.hasCompletedOnboarding) {
+  if (isAuthenticated && user && !user.hasCompletedOnboarding) {
     return (
       <OnboardingFlow
-        userName={user?.firstName || user?.email?.split('@')[0] || 'there'}
-        company={user?.company}
+        userName={user && user.firstName ? user.firstName : (user && user.email ? user.email.split('@')[0] : 'there')}
+        company={user && user.company ? user.company : undefined}
         onComplete={() => {
           setUser({ ...user, hasCompletedOnboarding: true });
           setShowOnboarding(false);
@@ -188,9 +188,9 @@ export default function App() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-slate-900 truncate">
-                  {user?.firstName || user?.email?.split('@')[0] || 'User'}
+                  {user && user.firstName ? user.firstName : (user && user.email ? user.email.split('@')[0] : 'User')}
                 </p>
-                <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                <p className="text-xs text-slate-500 truncate">{user && user.email ? user.email : ''}</p>
               </div>
             </button>
 
@@ -199,11 +199,11 @@ export default function App() {
               <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-lg shadow-xl border border-slate-200 overflow-hidden">
                 <div className="p-3 border-b border-slate-100">
                   <p className="text-sm text-slate-900">
-                    {user?.firstName && user?.lastName
+                    {user && user.firstName && user.lastName
                       ? `${user.firstName} ${user.lastName}`
-                      : user?.email}
+                      : (user && user.email ? user.email : '')}
                   </p>
-                  {user?.company && (
+                  {user && user.company && (
                     <p className="text-xs text-slate-500 mt-1">{user.company}</p>
                   )}
                 </div>
