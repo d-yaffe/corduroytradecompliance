@@ -11,6 +11,11 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: "dist",
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        dir: "dist",
+      },
+    },
   },
   plugins: [react()],
   resolve: {
