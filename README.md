@@ -12,7 +12,7 @@ Trade Compliance Hub is a modern web application that helps businesses streamlin
 - **Document Analysis**: Upload commercial invoices and packing lists to automatically extract product data and generate HTS classifications
 - **Bulk Classification**: Process multiple items at once with bulk upload capabilities
 - **Product Profiles**: Manage and track product classifications over time 
-- **Exception Review**: Review and manage classification exceptions
+- **Exception Review**: Review and manage classification exceptions 
 - **Dashboard Analytics**: Comprehensive overview of your compliance activities
 
 ## Tech Stack
