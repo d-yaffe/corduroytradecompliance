@@ -2,7 +2,7 @@
 
 AI-powered HTS classification and document analysis for seamless international trade compliance.
 
-## Overview
+## Overview it 
 
 Trade Compliance Hub is a modern web application that helps businesses streamline their trade compliance workflow through AI-powered tools. The platform provides intelligent HTS (Harmonized Tariff Schedule) code classification, document analysis, and compliance management features.
 
