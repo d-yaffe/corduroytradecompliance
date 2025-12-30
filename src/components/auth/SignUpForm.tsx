@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Mail, Lock, User, Building, AlertCircle, Eye, EyeOff, CheckCircle } from 'lucide-react';
-import logo from './assets/8dffc9a46764dc298d3dc392fb46f27f3eb8c7e5.png';
+import logo from '@/assets/8dffc9a46764dc298d3dc392fb46f27f3eb8c7e5.png';
 
 interface SignUpFormProps {
   onSignUp: (data: SignUpData) => void;
