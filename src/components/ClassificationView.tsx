@@ -19,6 +19,7 @@ interface ClassificationResult {
 
 export function ClassificationView() {
   const [query, setQuery] = useState('');
+  const [productDescription, setProductDescription] = useState('');
   const [originCountry, setOriginCountry] = useState('');
   const [result, setResult] = useState<ClassificationResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -29,6 +30,7 @@ export function ClassificationView() {
   const [newMaterial, setNewMaterial] = useState({ material: '', percentage: 0 });
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [editMode, setEditMode] = useState(false);
+  const [showReviewLaterConfirmation, setShowReviewLaterConfirmation] = useState(false);
   
   // Additional fields for product profile
   const [sku, setSku] = useState('');
@@ -84,9 +86,9 @@ export function ClassificationView() {
         tariff: originCountry ? (originCountry === 'China' ? '0% (Free)' : '0% (Free)') : 'Dependent on country of origin',
         reasoning: 'Based on the product description "wireless bluetooth speaker," this item is classified as a telecommunications device. The primary function is receiving and converting wireless audio signals. Key classification factors: wireless connectivity (Bluetooth), audio transmission capability, and electronic amplification.',
         tariffByOrigin: originCountry ? [
-          { country: originCountry, rate: '0% (Free)', tradeAgreement: originCountry === 'Mexico' || originCountry === 'Canada' ? 'USMCA' : 'MFN' },
+          { country: originCountry, rate: '0% (Free)', tradeAgreement: 'MFN' },
           { country: 'China', rate: '0% (Free)', tradeAgreement: 'MFN' },
-          { country: 'Mexico', rate: '0% (Free)', tradeAgreement: 'USMCA' },
+          { country: 'Mexico', rate: '0% (Free)', tradeAgreement: 'MFN' },
           { country: 'Vietnam', rate: '0% (Free)', tradeAgreement: 'MFN' },
         ] : undefined,
         alternatives: [
@@ -140,6 +142,46 @@ export function ClassificationView() {
     });
   };
 
+  const handleReviewLater = () => {
+    if (!result) return;
+
+    // In a real implementation, this would save to the priority review list
+    // For now, we'll show a confirmation message and clear the form
+    const reviewItem = {
+      sku: sku || 'Not assigned',
+      productName: query,
+      hts: result.hts,
+      confidence: result.confidence,
+      origin: originCountry,
+      vendor: vendor || 'Not specified',
+      unitCost: unitCost || 'Not specified',
+      dateAdded: new Date().toISOString(),
+      status: 'needs_review'
+    };
+
+    // Store in localStorage for persistence (in real app, this would go to a backend)
+    const existingReviews = JSON.parse(localStorage.getItem('priorityReviews') || '[]');
+    existingReviews.push(reviewItem);
+    localStorage.setItem('priorityReviews', JSON.stringify(existingReviews));
+
+    // Show confirmation
+    setShowReviewLaterConfirmation(true);
+    
+    // Clear form after 2 seconds
+    setTimeout(() => {
+      setShowReviewLaterConfirmation(false);
+      setResult(null);
+      setQuery('');
+      setSku('');
+      setVendor('');
+      setUnitCost('');
+      setOriginCountry('');
+      setProductDescription('');
+      setMaterials([]);
+      setUploadedFiles([]);
+    }, 2000);
+  };
+
   return (
     <div>
       <div className="max-w-4xl mx-auto">
@@ -147,7 +189,7 @@ export function ClassificationView() {
         <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-slate-700 mb-2">Product Description</label>
+              <label className="block text-slate-700 mb-2">Product Name</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
@@ -179,6 +221,21 @@ export function ClassificationView() {
                 <option value="Germany">Germany</option>
               </select>
             </div>
+          </div>
+          
+          {/* Product Description Text Area */}
+          <div className="mb-4">
+            <label className="block text-slate-700 mb-2">Product Description (Optional)</label>
+            <textarea
+              value={productDescription}
+              onChange={(e) => setProductDescription(e.target.value)}
+              placeholder="Describe the product's intended use, materials, function, or any other relevant details...&#10;&#10;Example: Portable wireless speaker with Bluetooth 5.0. ABS plastic body with aluminum grille. Built-in rechargeable battery, dual 10W drivers, IPX7 waterproof. For outdoor recreational use."
+              rows={4}
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Providing details about intended use, materials, and function helps improve classification accuracy
+            </p>
           </div>
           
           {/* File Upload Section */}
@@ -399,9 +456,24 @@ export function ClassificationView() {
             {/* Current Classification Card */}
             <div className="mb-6 p-5 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl">
               <div className="flex items-center justify-between mb-4">
-                <div>
-                  <div className="text-green-900 mb-1">Current Classification</div>
-                  <div className="text-green-800">HTS Code: {result.hts}</div>
+                <div className="flex-1">
+                  <div className="text-green-900 text-sm mb-2">Current Classification</div>
+                  <div className="text-green-800 text-lg mb-3">HTS Code: {result.hts}</div>
+                  
+                  <div className="space-y-1 text-xs mb-3">
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-700 min-w-[60px]">Chapter</span>
+                      <span className="text-green-800">85 — Electrical machinery and equipment</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-700 min-w-[60px]">Heading</span>
+                      <span className="text-green-800">8517 — Telephone sets and other apparatus</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-700 min-w-[60px]">Subheading</span>
+                      <span className="text-green-800">8517.62 — Machines for reception, conversion and transmission of voice, images or data</span>
+                    </div>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 px-4 py-2 bg-green-100 rounded-lg">
                   <CheckCircle className="w-5 h-5 text-green-700" />
@@ -584,6 +656,13 @@ export function ClassificationView() {
                   <MessageSquare className="w-5 h-5" />
                   Ask AI
                 </button>
+                <button 
+                  onClick={handleReviewLater}
+                  className="px-6 py-3 border-2 border-amber-600 text-amber-600 rounded-lg hover:bg-amber-50 transition-colors flex items-center gap-2"
+                >
+                  <AlertTriangle className="w-5 h-5" />
+                  Review Later
+                </button>
               </div>
             </div>
 
@@ -603,18 +682,37 @@ export function ClassificationView() {
                   {result.alternatives.map((alt, index) => (
                     <div key={index} className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-slate-900">{alt.hts}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="text-slate-600 text-sm">Confidence: {alt.confidence}%</span>
-                          <div className="w-20 h-2 bg-slate-200 rounded-full">
-                            <div 
-                              className="h-full bg-amber-500 rounded-full"
-                              style={{ width: `${alt.confidence}%` }}
-                            />
+                        <div className="flex-1">
+                          <div className="text-slate-900 text-lg mb-2">{alt.hts}</div>
+                          <p className="text-slate-700 text-sm mb-3">{alt.description}</p>
+                          
+                          <div className="space-y-1 text-xs mb-3">
+                            <div className="flex items-start gap-2">
+                              <span className="text-slate-600 min-w-[60px]">Chapter</span>
+                              <span className="text-slate-700">{index === 0 ? '85 — Electrical machinery and equipment' : index === 1 ? '85 — Electrical machinery and equipment' : '85 — Electrical machinery and equipment'}</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <span className="text-slate-600 min-w-[60px]">Heading</span>
+                              <span className="text-slate-700">{index === 0 ? '8518 — Loudspeakers, headphones, microphones' : index === 1 ? '8519 — Sound recording or reproducing apparatus' : '8519 — Sound recording or reproducing apparatus'}</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <span className="text-slate-600 min-w-[60px]">Subheading</span>
+                              <span className="text-slate-700">{index === 0 ? '8518.22 — Multiple loudspeakers, mounted in the same enclosure' : index === 1 ? '8519.81 — Sound reproducing apparatus' : '8519.81 — Sound reproducing apparatus'}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2 ml-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-600 text-sm">Confidence: {alt.confidence}%</span>
+                            <div className="w-16 h-2 bg-slate-200 rounded-full">
+                              <div 
+                                className="h-full bg-amber-500 rounded-full"
+                                style={{ width: `${alt.confidence}%` }}
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
-                      <p className="text-slate-700 text-sm mb-3">{alt.description}</p>
                       {alt.reasoning && (
                         <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                           <div className="flex items-start gap-2">
@@ -623,11 +721,11 @@ export function ClassificationView() {
                           </div>
                         </div>
                       )}
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-300">
                         <span className="text-slate-600 text-sm">Tariff: {alt.tariff}</span>
                         <button 
                           onClick={() => handleSelectAlternative(alt)}
-                          className="px-3 py-1 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-white transition-colors"
+                          className="px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-white transition-colors"
                         >
                           Select This Code
                         </button>
@@ -661,6 +759,19 @@ export function ClassificationView() {
             } : undefined}
             onClose={() => setShowAssistant(false)}
           />
+        )}
+
+        {/* Review Later Confirmation Toast */}
+        {showReviewLaterConfirmation && (
+          <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top">
+            <div className="bg-green-600 text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3">
+              <CheckCircle className="w-6 h-6" />
+              <div>
+                <p className="font-medium">Added to Priority Review</p>
+                <p className="text-sm text-green-100">Product saved for later review</p>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

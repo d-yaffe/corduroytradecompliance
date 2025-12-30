@@ -2,16 +2,17 @@ import { useState } from 'react';
 import { Dashboard } from './components/Dashboard';
 import { UnifiedClassification } from './components/UnifiedClassification';
 import { ProductProfile } from './components/ProductProfile';
+import { Settings } from './components/Settings';
 import { LoginForm } from './components/auth/LoginForm';
 import { SignUpForm, SignUpData } from './components/auth/SignUpForm';
 import { ResetPasswordForm } from './components/auth/ResetPasswordForm';
 import { NewPasswordForm } from './components/auth/NewPasswordForm';
 import { WelcomeScreen } from './components/auth/WelcomeScreen';
 import { OnboardingFlow } from './components/auth/OnboardingFlow';
-import { Package, FileText, LayoutDashboard, LogOut, User } from 'lucide-react';
+import { Package, FileText, LayoutDashboard, LogOut, User, Settings as SettingsIcon } from 'lucide-react';
 import logo from 'figma:asset/8dffc9a46764dc298d3dc392fb46f27f3eb8c7e5.png';
 
-type View = 'dashboard' | 'classify' | 'profile';
+type View = 'dashboard' | 'classify' | 'profile' | 'settings';
 type AuthView = 'login' | 'signup' | 'reset-password' | 'new-password';
 
 interface UserData {
@@ -174,6 +175,18 @@ export default function App() {
             <FileText className="w-5 h-5" />
             <span>Product Profiles</span>
           </button>
+          
+          <button
+            onClick={() => setCurrentView('settings')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              currentView === 'settings'
+                ? 'bg-blue-50 text-blue-600'
+                : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <SettingsIcon className="w-5 h-5" />
+            <span>Settings</span>
+          </button>
         </nav>
         
         {/* User Profile Section */}
@@ -220,7 +233,7 @@ export default function App() {
 
           <div className="mt-4 text-slate-500 text-xs">
             <p>Compliance OS v1.0</p>
-            <p className="mt-1">US Importers & USMCA</p>
+            <p className="mt-1">US Importers</p>
           </div>
         </div>
       </aside>
@@ -230,6 +243,7 @@ export default function App() {
         {currentView === 'dashboard' && <Dashboard onNavigate={setCurrentView} />}
         {currentView === 'classify' && <UnifiedClassification />}
         {currentView === 'profile' && <ProductProfile />}
+        {currentView === 'settings' && <Settings />}
       </main>
     </div>
   );

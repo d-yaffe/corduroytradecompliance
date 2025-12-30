@@ -150,6 +150,45 @@ export function BulkUpload({ initialFile, initialSupportingFiles = [], autoStart
     setSupportingFiles(supportingFiles.filter((_, i) => i !== index));
   };
 
+  const handleExportResults = () => {
+    if (items.length === 0) {
+      alert('No results to export');
+      return;
+    }
+
+    // Create CSV content
+    const headers = ['Product Name', 'Description', 'Status', 'HTS Code', 'Confidence (%)', 'Tariff', 'Origin', 'Materials', 'Cost'];
+    const csvRows = [headers.join(',')];
+
+    items.forEach(item => {
+      const row = [
+        `"${item.productName}"`,
+        `"${item.description}"`,
+        item.status,
+        item.hts || 'N/A',
+        item.confidence ? item.confidence.toString() : 'N/A',
+        item.tariff || 'N/A',
+        item.origin || 'N/A',
+        item.materials || 'N/A',
+        item.cost || 'N/A'
+      ];
+      csvRows.push(row.join(','));
+    });
+
+    const csvContent = csvRows.join('\n');
+    
+    // Create and trigger download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `bulk-classification-results-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const getFileIcon = (fileName: string) => {
     const parts = fileName.split('.');
     const ext = parts.length > 0 && parts[parts.length - 1] ? parts[parts.length - 1].toLowerCase() : '';
@@ -488,7 +527,10 @@ export function BulkUpload({ initialFile, initialSupportingFiles = [], autoStart
             {/* Actions */}
             <div className="bg-white rounded-xl p-4 border border-slate-200 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+                <button
+                  onClick={handleExportResults}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                >
                   <Download className="w-4 h-4" />
                   Export Results
                 </button>

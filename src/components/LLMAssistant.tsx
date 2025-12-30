@@ -24,7 +24,7 @@ export function LLMAssistant({ productContext, onClose, isMinimizable = true }: 
       role: 'assistant',
       content: productContext 
         ? `I'm here to help you classify "${productContext.name}". I can answer questions about HS/HTS codes, tariff rates, trade agreements, and help clarify product characteristics for accurate classification. What would you like to know?`
-        : `I'm your trade compliance assistant. I can help you understand HS/HTS codes, tariff rates, USMCA requirements, and product classification rules. How can I assist you today?`,
+        : `I'm your trade compliance assistant. I can help you understand HS/HTS codes, tariff rates, and product classification rules. How can I assist you today?`,
       timestamp: new Date()
     }
   ]);
@@ -63,9 +63,7 @@ export function LLMAssistant({ productContext, onClose, isMinimizable = true }: 
       if (lowerInput.includes('material') || lowerInput.includes('composition')) {
         assistantResponse = `For accurate HS/HTS classification, material composition is crucial. For ${productContext?.name || 'this product'}, I need to know:\n\n1. What is the primary material by weight?\n2. Are there any secondary materials that make up more than 10% of the product?\n3. For textiles: Is it woven, knitted, or non-woven?\n\nFor example, if a product is 60% cotton and 40% polyester, it would typically be classified based on the cotton (primary material). This affects the tariff rate significantly.`;
       } else if (lowerInput.includes('tariff') || lowerInput.includes('duty')) {
-        assistantResponse = `Tariff rates depend on three key factors:\n\n1. **HTS Code**: The classification determines the base rate\n2. **Country of Origin**: Different countries have different rates\n3. **Trade Agreements**: USMCA, free trade agreements, etc.\n\nFor ${productContext?.name || 'this product'}${productContext?.origin ? ` from ${productContext.origin}` : ''}, ${productContext?.origin === 'Mexico' || productContext?.origin === 'Canada' ? 'USMCA may apply, which could reduce or eliminate tariffs if the product qualifies.' : 'check if any preferential trade programs apply.'}\n\nWould you like me to explain how to calculate landed cost?`;
-      } else if (lowerInput.includes('usmca') || lowerInput.includes('nafta')) {
-        assistantResponse = `USMCA (United States-Mexico-Canada Agreement) replaced NAFTA and offers preferential tariff rates for qualifying goods.\n\n**Key Requirements:**\n- Product must originate in US, Mexico, or Canada\n- Must meet specific Rules of Origin\n- Regional Value Content (RVC) thresholds must be met\n- Proper certification required\n\nFor ${productContext?.name || 'your product'}, I can help determine if it qualifies. What percentage of the product's value comes from North American materials and labor?`;
+        assistantResponse = `Tariff rates depend on three key factors:\n\n1. **HTS Code**: The classification determines the base rate\n2. **Country of Origin**: Different countries have different rates\n3. **Trade Agreements**: Various free trade agreements may apply\n\nFor ${productContext?.name || 'this product'}${productContext?.origin ? ` from ${productContext.origin}` : ''}, check if any preferential trade programs apply based on the country of origin.\n\nWould you like me to explain how to calculate landed cost?`;
       } else if (lowerInput.includes('primary function') || lowerInput.includes('purpose')) {
         assistantResponse = `The "primary function" determines classification when a product could fit multiple categories. Ask yourself:\n\n1. What does this product do PRIMARILY?\n2. If it has multiple functions, which one is most important to the user?\n3. What would a typical consumer say this product is for?\n\nFor example, a smartwatch could be:\n- A watch (Chapter 91)\n- A fitness tracker (Chapter 90)\n- A communication device (Chapter 85)\n\nThe primary function (timekeeping vs. health monitoring vs. communication) determines the classification. What do you think is the primary function of ${productContext?.name || 'this product'}?`;
       } else if (lowerInput.includes('how') || lowerInput.includes('why') || lowerInput.includes('explain')) {
@@ -210,7 +208,6 @@ export function LLMAssistant({ productContext, onClose, isMinimizable = true }: 
           {[
             'What materials affect classification?',
             'How do I determine primary function?',
-            'What is USMCA qualification?',
             'Why are there alternative codes?'
           ].map((question) => (
             <button

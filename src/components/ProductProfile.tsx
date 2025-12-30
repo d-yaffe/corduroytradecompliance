@@ -322,137 +322,199 @@ export function ProductProfile() {
           </div>
         </div>
 
+        {/* Search and Filters Section */}
+        <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6">
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Search */}
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search products by name, SKU, or HTS..."
+                  className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            {/* Filter Toggle Button */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="px-4 py-2 border border-slate-300 rounded-lg text-sm hover:bg-slate-50 transition-colors flex items-center gap-2 whitespace-nowrap"
+            >
+              <Filter className="w-4 h-4 text-slate-600" />
+              <span className="text-slate-700">Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full text-xs">
+                  {activeFilterCount}
+                </span>
+              )}
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+
+          {/* Expandable Filter Panel */}
+          {showFilters && (
+            <div className="mt-4 pt-4 border-t border-slate-200">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-slate-900 text-sm">Filter Products</h3>
+                {activeFilterCount > 0 && (
+                  <button
+                    onClick={clearAllFilters}
+                    className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                  >
+                    <X className="w-3 h-3" />
+                    Clear all
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                {/* Category Filter */}
+                <div>
+                  <label className="text-xs text-slate-600 mb-2 block">Category</label>
+                  <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                    {categories.map(category => (
+                      <label key={category} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedCategories.includes(category)}
+                          onChange={() => toggleFilter(selectedCategories, category, setSelectedCategories)}
+                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-slate-700">{category}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Vendor Filter */}
+                <div>
+                  <label className="text-xs text-slate-600 mb-2 block">Vendor</label>
+                  <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                    {vendors.map(vendor => (
+                      <label key={vendor} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedVendors.includes(vendor)}
+                          onChange={() => toggleFilter(selectedVendors, vendor, setSelectedVendors)}
+                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-slate-700">{vendor}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Origin Filter */}
+                <div>
+                  <label className="text-xs text-slate-600 mb-2 block">Country of Origin</label>
+                  <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                    {origins.map(origin => (
+                      <label key={origin} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedOrigins.includes(origin)}
+                          onChange={() => toggleFilter(selectedOrigins, origin, setSelectedOrigins)}
+                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-slate-700">{origin}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Date Range Filter */}
+                <div>
+                  <label className="text-xs text-slate-600 mb-2 block">Last Updated</label>
+                  <select
+                    value={selectedDateRange}
+                    onChange={(e) => setSelectedDateRange(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All time</option>
+                    <option value="7">Last 7 days</option>
+                    <option value="30">Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                  </select>
+                </div>
+
+                {/* Confidence Filter */}
+                <div>
+                  <label className="text-xs text-slate-600 mb-2 block">Confidence Level</label>
+                  <select
+                    value={selectedConfidence}
+                    onChange={(e) => setSelectedConfidence(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All levels</option>
+                    <option value="high">High (95%+)</option>
+                    <option value="medium">Medium (85-94%)</option>
+                    <option value="low">Low (&lt;85%)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Active Filter Pills */}
+          {activeFilterCount > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {selectedCategories.map(category => (
+                <span key={category} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs flex items-center gap-1">
+                  {category}
+                  <button onClick={() => toggleFilter(selectedCategories, category, setSelectedCategories)} className="hover:text-blue-900">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+              {selectedVendors.map(vendor => (
+                <span key={vendor} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs flex items-center gap-1">
+                  {vendor}
+                  <button onClick={() => toggleFilter(selectedVendors, vendor, setSelectedVendors)} className="hover:text-blue-900">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+              {selectedOrigins.map(origin => (
+                <span key={origin} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs flex items-center gap-1">
+                  {origin}
+                  <button onClick={() => toggleFilter(selectedOrigins, origin, setSelectedOrigins)} className="hover:text-blue-900">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+              {selectedDateRange !== 'all' && (
+                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs flex items-center gap-1">
+                  Last {selectedDateRange} days
+                  <button onClick={() => setSelectedDateRange('all')} className="hover:text-blue-900">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+              {selectedConfidence !== 'all' && (
+                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs flex items-center gap-1">
+                  {selectedConfidence === 'high' ? 'High confidence' : selectedConfidence === 'medium' ? 'Medium confidence' : 'Low confidence'}
+                  <button onClick={() => setSelectedConfidence('all')} className="hover:text-blue-900">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Product List */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <div className="p-4 border-b border-slate-200">
-                <div className="relative mb-3">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search products..."
-                    className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+              <div className="p-4 border-b border-slate-200 bg-slate-50">
+                <div className="text-sm text-slate-700">
+                  Showing {filteredProducts.length} of {products.length} products
                 </div>
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm hover:bg-slate-50 transition-colors flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-2">
-                    <Filter className="w-4 h-4 text-slate-600" />
-                    <span className="text-slate-700">Filters</span>
-                    {activeFilterCount > 0 && (
-                      <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full text-xs">
-                        {activeFilterCount}
-                      </span>
-                    )}
-                  </div>
-                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
-                </button>
               </div>
-
-              {/* Filter Panel */}
-              {showFilters && (
-                <div className="p-4 border-b border-slate-200 bg-slate-50 space-y-4">
-                  {/* Clear filters */}
-                  {activeFilterCount > 0 && (
-                    <button
-                      onClick={clearAllFilters}
-                      className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                    >
-                      <X className="w-3 h-3" />
-                      Clear all filters
-                    </button>
-                  )}
-
-                  {/* Category Filter */}
-                  <div>
-                    <label className="text-xs text-slate-600 mb-2 block">Category</label>
-                    <div className="space-y-1.5">
-                      {categories.map(category => (
-                        <label key={category} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={selectedCategories.includes(category)}
-                            onChange={() => toggleFilter(selectedCategories, category, setSelectedCategories)}
-                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-slate-700">{category}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Vendor Filter */}
-                  <div>
-                    <label className="text-xs text-slate-600 mb-2 block">Vendor</label>
-                    <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                      {vendors.map(vendor => (
-                        <label key={vendor} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={selectedVendors.includes(vendor)}
-                            onChange={() => toggleFilter(selectedVendors, vendor, setSelectedVendors)}
-                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-slate-700">{vendor}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Origin Filter */}
-                  <div>
-                    <label className="text-xs text-slate-600 mb-2 block">Country of Origin</label>
-                    <div className="space-y-1.5">
-                      {origins.map(origin => (
-                        <label key={origin} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={selectedOrigins.includes(origin)}
-                            onChange={() => toggleFilter(selectedOrigins, origin, setSelectedOrigins)}
-                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-slate-700">{origin}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Date Range Filter */}
-                  <div>
-                    <label className="text-xs text-slate-600 mb-2 block">Last Updated</label>
-                    <select
-                      value={selectedDateRange}
-                      onChange={(e) => setSelectedDateRange(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="all">All time</option>
-                      <option value="7">Last 7 days</option>
-                      <option value="30">Last 30 days</option>
-                      <option value="90">Last 90 days</option>
-                    </select>
-                  </div>
-
-                  {/* Confidence Filter */}
-                  <div>
-                    <label className="text-xs text-slate-600 mb-2 block">Confidence Level</label>
-                    <select
-                      value={selectedConfidence}
-                      onChange={(e) => setSelectedConfidence(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="all">All levels</option>
-                      <option value="high">High (95%+)</option>
-                      <option value="medium">Medium (85-94%)</option>
-                      <option value="low">Low (&lt;85%)</option>
-                    </select>
-                  </div>
-                </div>
-              )}
               
               <div className="divide-y divide-slate-200 max-h-[600px] overflow-y-auto">
                 {filteredProducts.map((product) => (
@@ -502,14 +564,63 @@ export function ProductProfile() {
                 {/* Classification Info */}
                 <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-green-900">Current Classification</span>
+                    <span className="text-green-900 text-sm">Current Classification</span>
                     <div className="flex items-center gap-2">
                       <span className="text-green-700 text-sm">Confidence:</span>
                       <span className="text-green-900">{selectedProduct.confidence}%</span>
                     </div>
                   </div>
-                  <div className="text-green-800">HTS Code: {selectedProduct.hts}</div>
-                  <div className="text-green-700 text-sm mt-1">
+                  <div className="text-green-800 text-lg mb-3">HTS Code: {selectedProduct.hts}</div>
+                  
+                  <div className="space-y-1 text-xs mb-3">
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-700 min-w-[60px]">Chapter</span>
+                      <span className="text-green-800">
+                        {selectedProduct.hts.startsWith('85') && '85 — Electrical machinery and equipment'}
+                        {selectedProduct.hts.startsWith('61') && '61 — Articles of apparel, knitted or crocheted'}
+                        {selectedProduct.hts.startsWith('94') && '94 — Furniture; bedding, mattresses, cushions'}
+                        {selectedProduct.hts.startsWith('73') && '73 — Articles of iron or steel'}
+                        {selectedProduct.hts.startsWith('42') && '42 — Articles of leather; travel goods'}
+                        {selectedProduct.hts.startsWith('91') && '91 — Clocks and watches and parts thereof'}
+                        {selectedProduct.hts.startsWith('55') && '55 — Man-made staple fibers'}
+                        {selectedProduct.hts.startsWith('69') && '69 — Ceramic products'}
+                        {selectedProduct.hts.startsWith('95') && '95 — Toys, games and sports equipment'}
+                        {selectedProduct.hts.startsWith('44') && '44 — Wood and articles of wood'}
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-700 min-w-[60px]">Heading</span>
+                      <span className="text-green-800">
+                        {selectedProduct.hts.startsWith('8518') && '8518 — Loudspeakers, headphones, microphones'}
+                        {selectedProduct.hts.startsWith('6109') && '6109 — T-shirts, singlets and other vests, knitted'}
+                        {selectedProduct.hts.startsWith('9405') && '9405 — Lamps and lighting fittings'}
+                        {selectedProduct.hts.startsWith('7323') && '7323 — Table, kitchen or other household articles of iron or steel'}
+                        {selectedProduct.hts.startsWith('4202') && '4202 — Trunks, suitcases, vanity cases, briefcases'}
+                        {selectedProduct.hts.startsWith('9102') && '9102 — Wrist watches, pocket watches and other watches'}
+                        {selectedProduct.hts.startsWith('5515') && '5515 — Other woven fabrics of synthetic staple fibers'}
+                        {selectedProduct.hts.startsWith('6912') && '6912 — Tableware, kitchenware, other household articles of ceramics'}
+                        {selectedProduct.hts.startsWith('9506') && '9506 — Articles and equipment for general physical exercise'}
+                        {selectedProduct.hts.startsWith('4419') && '4419 — Tableware and kitchenware, of wood'}
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-700 min-w-[60px]">Subheading</span>
+                      <span className="text-green-800">
+                        {selectedProduct.hts.startsWith('8518.22') && '8518.22 — Multiple loudspeakers, mounted in the same enclosure'}
+                        {selectedProduct.hts.startsWith('6109.10') && '6109.10 — Of cotton'}
+                        {selectedProduct.hts.startsWith('9405.20') && '9405.20 — Electric table, desk, bedside or floor-standing lamps'}
+                        {selectedProduct.hts.startsWith('7323.93') && '7323.93 — Of stainless steel'}
+                        {selectedProduct.hts.startsWith('4202.92') && '4202.92 — With outer surface of sheeting of plastic or of textile materials'}
+                        {selectedProduct.hts.startsWith('9102.11') && '9102.11 — With mechanical display only'}
+                        {selectedProduct.hts.startsWith('5515.11') && '5515.11 — Mixed mainly or solely with viscose rayon staple fibers'}
+                        {selectedProduct.hts.startsWith('6912.00') && '6912.00 — Tableware, kitchenware, other household articles'}
+                        {selectedProduct.hts.startsWith('9506.91') && '9506.91 — Articles and equipment for general physical exercise, gymnastics or athletics'}
+                        {selectedProduct.hts.startsWith('4419.19') && '4419.19 — Other'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="text-green-700 text-sm">
                     Last updated: {new Date(selectedProduct.lastUpdated).toLocaleDateString()}
                   </div>
                 </div>
@@ -558,11 +669,7 @@ export function ProductProfile() {
                       <span className="text-blue-700">0% (Free)</span>
                     </div>
                     <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                      <span className="text-blue-900">USMCA Eligible</span>
-                      <span className="text-green-700">Qualified</span>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                      <span className="text-blue-900">Estimated Landed Cost</span>
+                      <span className="text-blue-900">Est. Cost Plus Tariff</span>
                       <span className="text-blue-700">$14.20</span>
                     </div>
                   </div>

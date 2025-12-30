@@ -40,9 +40,57 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
           {/* Classification Card */}
           <div className="mb-6 p-5 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl">
             <div className="flex items-center justify-between mb-4">
-              <div>
-                <div className="text-green-900 mb-1">Current Classification</div>
-                <div className="text-green-800">HTS Code: {product.hts}</div>
+              <div className="flex-1">
+                <div className="text-green-900 text-sm mb-2">Current Classification</div>
+                <div className="text-green-800 text-lg mb-3">HTS Code: {product.hts}</div>
+                
+                <div className="space-y-1 text-xs mb-3">
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-700 min-w-[60px]">Chapter</span>
+                    <span className="text-green-800">
+                      {product.hts.startsWith('85') && '85 — Electrical machinery and equipment'}
+                      {product.hts.startsWith('61') && '61 — Articles of apparel, knitted or crocheted'}
+                      {product.hts.startsWith('94') && '94 — Furniture; bedding, mattresses, cushions'}
+                      {product.hts.startsWith('73') && '73 — Articles of iron or steel'}
+                      {product.hts.startsWith('42') && '42 — Articles of leather; travel goods'}
+                      {product.hts.startsWith('91') && '91 — Clocks and watches and parts thereof'}
+                      {product.hts.startsWith('55') && '55 — Man-made staple fibers'}
+                      {product.hts.startsWith('69') && '69 — Ceramic products'}
+                      {product.hts.startsWith('95') && '95 — Toys, games and sports equipment'}
+                      {product.hts.startsWith('44') && '44 — Wood and articles of wood'}
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-700 min-w-[60px]">Heading</span>
+                    <span className="text-green-800">
+                      {product.hts.startsWith('8518') && '8518 — Loudspeakers, headphones, microphones'}
+                      {product.hts.startsWith('6109') && '6109 — T-shirts, singlets and other vests, knitted'}
+                      {product.hts.startsWith('9405') && '9405 — Lamps and lighting fittings'}
+                      {product.hts.startsWith('7323') && '7323 — Table, kitchen or other household articles of iron or steel'}
+                      {product.hts.startsWith('4202') && '4202 — Trunks, suitcases, vanity cases, briefcases'}
+                      {product.hts.startsWith('9102') && '9102 — Wrist watches, pocket watches and other watches'}
+                      {product.hts.startsWith('5515') && '5515 — Other woven fabrics of synthetic staple fibers'}
+                      {product.hts.startsWith('6912') && '6912 — Tableware, kitchenware, other household articles of ceramics'}
+                      {product.hts.startsWith('9506') && '9506 — Articles and equipment for general physical exercise'}
+                      {product.hts.startsWith('4421') && '4421 — Other articles of wood'}
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-700 min-w-[60px]">Subheading</span>
+                    <span className="text-green-800">
+                      {product.hts.startsWith('8518.22') && '8518.22 — Multiple loudspeakers, mounted in the same enclosure'}
+                      {product.hts.startsWith('6109.10') && '6109.10 — Of cotton'}
+                      {product.hts.startsWith('9405.20') && '9405.20 — Electric table, desk, bedside or floor-standing lamps'}
+                      {product.hts.startsWith('7323.93') && '7323.93 — Of stainless steel'}
+                      {product.hts.startsWith('4202.92') && '4202.92 — With outer surface of sheeting of plastic or of textile materials'}
+                      {product.hts.startsWith('9102.11') && '9102.11 — With mechanical display only'}
+                      {product.hts.startsWith('5515.11') && '5515.11 — Mixed mainly or solely with viscose rayon staple fibers'}
+                      {product.hts.startsWith('6912.00') && '6912.00 — Tableware, kitchenware, other household articles'}
+                      {product.hts.startsWith('9506.91') && '9506.91 — Articles and equipment for general physical exercise, gymnastics or athletics'}
+                      {product.hts.startsWith('4421.99') && '4421.99 — Other'}
+                    </span>
+                  </div>
+                </div>
               </div>
               <div className="flex items-center gap-2 px-4 py-2 bg-green-100 rounded-lg">
                 <CheckCircle className="w-5 h-5 text-green-700" />
@@ -103,14 +151,7 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                 <span className="text-blue-700">0% (Free)</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <span className="text-blue-900 text-sm">USMCA Eligible</span>
-                <span className="text-green-700 flex items-center gap-1">
-                  <CheckCircle className="w-4 h-4" />
-                  Qualified
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <span className="text-blue-900 text-sm">Estimated Landed Cost</span>
+                <span className="text-blue-900 text-sm">Est. Cost Plus Tariff</span>
                 <span className="text-blue-700">$14.20</span>
               </div>
             </div>

@@ -22,6 +22,7 @@ export function UnifiedClassification() {
   const [inputMode, setInputMode] = useState<InputMode>('manual');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [supportingFiles, setSupportingFiles] = useState<File[]>([]);
+  const [bulkDescription, setBulkDescription] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [showBulkResults, setShowBulkResults] = useState(false);
 
@@ -85,6 +86,7 @@ export function UnifiedClassification() {
   const resetToManual = () => {
     setUploadedFile(null);
     setSupportingFiles([]);
+    setBulkDescription('');
     setInputMode('manual');
     setShowBulkResults(false);
   };
@@ -171,6 +173,29 @@ export function UnifiedClassification() {
               </div>
             </div>
 
+            {/* Product Description */}
+            <div className="bg-white rounded-xl p-6 border border-slate-200">
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="w-5 h-5 text-slate-600" />
+                  <div>
+                    <h4 className="text-slate-900">General Product Description (Optional)</h4>
+                    <p className="text-slate-600 text-sm">Describe the products' intended use, materials, or function</p>
+                  </div>
+                </div>
+              </div>
+              <textarea
+                value={bulkDescription}
+                onChange={(e) => setBulkDescription(e.target.value)}
+                placeholder="Example: These are consumer electronics products made primarily of ABS plastic and electronic components. They are intended for indoor/outdoor recreational use and feature wireless connectivity. Most items include rechargeable lithium batteries."
+                rows={4}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              />
+              <p className="text-xs text-slate-500 mt-2">
+                This general description will be applied to all products in your upload to improve classification accuracy
+              </p>
+            </div>
+
             {/* Supporting Documents */}
             <div className="bg-white rounded-xl p-6 border border-slate-200">
               <div className="flex items-center justify-between mb-4">
@@ -236,7 +261,11 @@ export function UnifiedClassification() {
                 <div>
                   <h4 className="text-slate-900 mb-1">Ready to Start</h4>
                   <p className="text-slate-600 text-sm">
-                    {supportingFiles.length > 0
+                    {bulkDescription && supportingFiles.length > 0
+                      ? `Main file + description + ${supportingFiles.length} supporting document${supportingFiles.length > 1 ? 's' : ''} ready`
+                      : bulkDescription
+                      ? 'Main file + description ready for classification'
+                      : supportingFiles.length > 0
                       ? `Main file + ${supportingFiles.length} supporting document${supportingFiles.length > 1 ? 's' : ''} ready`
                       : 'Main file ready for classification'}
                   </p>

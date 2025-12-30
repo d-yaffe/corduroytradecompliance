@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle, Clock, TrendingUp, MessageSquare, Sparkles, ChevronRight, Package, FileText, X, Upload, Database, BarChart, Search, Plus } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, TrendingUp, MessageSquare, Sparkles, ChevronRight, Package, FileText, X, Upload, Database, BarChart, Search, Plus, ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { ExceptionReview } from './ExceptionReview';
 
@@ -9,6 +9,9 @@ interface DashboardProps {
 export function Dashboard({ onNavigate }: DashboardProps) {
   const [selectedException, setSelectedException] = useState<any>(null);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
+  const [showAllReviewModal, setShowAllReviewModal] = useState(false);
+  const [sortBy, setSortBy] = useState<'priority' | 'product'>('priority');
+  const [filterBy, setFilterBy] = useState<'all' | 'lowConfidence' | 'missingDoc' | 'multipleHTS' | 'materialIssues'>('all');
   const [resolvedItems, setResolvedItems] = useState<any[]>([]);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [lastResolvedItem, setLastResolvedItem] = useState<any>(null);
@@ -24,7 +27,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       value: '$11,250',
       description: 'Fitness tracking, heart rate, GPS',
       priority: 'high',
-      dueDate: 'Today'
+      category: 'lowConfidence'
     },
     { 
       id: 2, 
@@ -37,7 +40,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       value: '$6,250',
       description: 'Portable speaker with rechargeable battery',
       priority: 'medium',
-      dueDate: 'Tomorrow'
+      category: 'missingDoc'
     },
     { 
       id: 3, 
@@ -50,7 +53,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       value: '$8,940',
       description: '60% cotton, 40% polyester blend',
       priority: 'medium',
-      dueDate: 'Dec 18'
+      category: 'multipleHTS'
     },
     {
       id: 4,
@@ -63,7 +66,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       value: '$1,875',
       description: 'EVA material protective case',
       priority: 'low',
-      dueDate: 'Dec 19'
+      category: 'materialIssues'
     }
   ]);
   const [aiMessages, setAiMessages] = useState([
@@ -128,24 +131,24 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       <div className="max-w-[1600px] mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-start justify-between mb-2">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-2">
+            <div className="flex-1 min-w-0">
               <h1 className="text-slate-900 mb-1">Good morning 👋</h1>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                 <p className="text-slate-600">
                   You have {activeExceptions.length} item{activeExceptions.length !== 1 ? 's' : ''} requiring your attention
                 </p>
                 {resolvedItems.length > 0 && (
-                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm flex items-center gap-1.5">
+                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm flex items-center gap-1.5 w-fit">
                     <CheckCircle className="w-4 h-4" />
                     {resolvedItems.length} resolved today
                   </span>
                 )}
               </div>
             </div>
-            <div className="text-right">
-              <div className="text-slate-600 text-sm">Monday, December 15, 2025</div>
-              <div className="text-slate-500 text-sm">Last sync: 2 min ago</div>
+            <div className="text-left sm:text-right flex-shrink-0">
+              <div className="text-slate-600 text-sm whitespace-nowrap">Monday, December 15, 2025</div>
+              <div className="text-slate-500 text-sm whitespace-nowrap">Last sync: 2 min ago</div>
             </div>
           </div>
         </div>
@@ -154,15 +157,15 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           {/* Main Content - 2 columns */}
           <div className="xl:col-span-2 space-y-6">
             {/* Quick Stats */}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {stats.map((stat) => (
-                <div key={stat.label} className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <div key={stat.label} className="bg-white rounded-xl p-4 lg:p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center justify-between mb-3">
                     <div className={`${stat.bg} ${stat.color} p-2.5 rounded-lg`}>
                       <stat.icon className="w-5 h-5" />
                     </div>
                   </div>
-                  <div className={`${stat.color} mb-1`}>{stat.value}</div>
+                  <div className={`${stat.color} mb-1 text-2xl lg:text-3xl`}>{stat.value}</div>
                   <div className="text-slate-600 text-sm">{stat.label}</div>
                   <div className="text-slate-500 text-xs mt-1">{stat.subtext}</div>
                 </div>
@@ -186,63 +189,71 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               </div>
 
               <div className="divide-y divide-slate-100">
-                {activeExceptions.map((item) => (
-                  <div 
-                    key={item.id} 
-                    className="p-5 hover:bg-slate-50 transition-colors cursor-pointer group"
-                    onClick={() => setSelectedException(item)}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-2">
-                          <AlertCircle className={`w-5 h-5 flex-shrink-0 ${
-                            item.priority === 'high' ? 'text-red-600' : 
-                            item.priority === 'medium' ? 'text-amber-600' : 'text-blue-600'
-                          }`} />
-                          <span className="text-slate-900 truncate">{item.product}</span>
-                          <span className={`px-2 py-0.5 rounded text-xs border ${getPriorityColor(item.priority)}`}>
-                            {item.priority}
-                          </span>
+                {activeExceptions
+                  .filter(item => filterBy === 'all' || item.priority === filterBy)
+                  .sort((a, b) => {
+                    if (sortBy === 'priority') {
+                      return a.priority.localeCompare(b.priority);
+                    } else if (sortBy === 'product') {
+                      return a.product.localeCompare(b.product);
+                    }
+                    return 0;
+                  })
+                  .map((item) => (
+                    <div 
+                      key={item.id} 
+                      className="p-5 hover:bg-slate-50 transition-colors cursor-pointer group"
+                      onClick={() => setSelectedException(item)}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <AlertCircle className={`w-5 h-5 flex-shrink-0 ${
+                              item.priority === 'high' ? 'text-red-600' : 
+                              item.priority === 'medium' ? 'text-amber-600' : 'text-blue-600'
+                            }`} />
+                            <span className="text-slate-900 truncate">{item.product}</span>
+                            <span className={`px-2 py-0.5 rounded text-xs border flex-shrink-0 ${getPriorityColor(item.priority)}`}>
+                              {item.priority}
+                            </span>
+                          </div>
+                          
+                          <div className="ml-0 sm:ml-8 space-y-1">
+                            <div className="text-sm text-slate-600">
+                              <span className="text-red-700">⚠ {item.reason}</span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
+                              <span className="whitespace-nowrap">SKU: {item.sku}</span>
+                              <span className="hidden sm:inline">•</span>
+                              <span className="whitespace-nowrap">HTS: {item.hts}</span>
+                              <span className="hidden sm:inline">•</span>
+                              <span className="whitespace-nowrap">Origin: {item.origin}</span>
+                              <span className="hidden sm:inline">•</span>
+                              <span className="whitespace-nowrap">Value: {item.value}</span>
+                            </div>
+                          </div>
                         </div>
                         
-                        <div className="ml-8 space-y-1">
-                          <div className="text-sm text-slate-600">
-                            <span className="text-red-700">⚠ {item.reason}</span>
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-slate-500">
-                            <span>SKU: {item.sku}</span>
-                            <span>•</span>
-                            <span>HTS: {item.hts}</span>
-                            <span>•</span>
-                            <span>Origin: {item.origin}</span>
-                            <span>•</span>
-                            <span>Value: {item.value}</span>
-                            <span>•</span>
-                            <span>Due: {item.dueDate}</span>
-                          </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedException(item);
+                            }}
+                            className="hidden sm:block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm opacity-0 group-hover:opacity-100"
+                          >
+                            Review Now
+                          </button>
+                          <ChevronRight className="w-5 h-5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                       </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedException(item);
-                          }}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm opacity-0 group-hover:opacity-100"
-                        >
-                          Review Now
-                        </button>
-                        <ChevronRight className="w-5 h-5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
 
               <div className="px-6 py-4 bg-slate-50 border-t border-slate-200">
                 <button 
-                  onClick={() => onNavigate('classify')}
+                  onClick={() => setShowAllReviewModal(true)}
                   className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-2"
                 >
                   View all exceptions
@@ -380,34 +391,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               )}
 
               {/* Quick Insights */}
-              <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-                <h3 className="text-slate-900 mb-4">Today's Insights</h3>
-                <div className="space-y-4">
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <div className="flex items-start gap-2 mb-1">
-                      <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5" />
-                      <div className="text-sm text-amber-900">3 shipments approaching duty threshold</div>
-                    </div>
-                    <p className="text-xs text-amber-700 ml-6">Review to optimize tariff costs</p>
-                  </div>
-
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-start gap-2 mb-1">
-                      <TrendingUp className="w-4 h-4 text-blue-600 mt-0.5" />
-                      <div className="text-sm text-blue-900">Classification accuracy up 2.1%</div>
-                    </div>
-                    <p className="text-xs text-blue-700 ml-6">Great job on product details!</p>
-                  </div>
-
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-start gap-2 mb-1">
-                      <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
-                      <div className="text-sm text-green-900">127 products classified today</div>
-                    </div>
-                    <p className="text-xs text-green-700 ml-6">Your bulk upload is complete</p>
-                  </div>
-                </div>
-              </div>
+              {/* Removed for now - will be added back later */}
             </div>
           </div>
         </div>
@@ -429,6 +413,195 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           onApprove={() => handleResolveException(selectedException)}
           onReject={() => setSelectedException(null)}
         />
+      )}
+
+      {/* All Items Needs Review Modal */}
+      {showAllReviewModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-5xl w-full max-h-[85vh] flex flex-col shadow-2xl">
+            {/* Modal Header */}
+            <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => setShowAllReviewModal(false)}
+                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <ArrowLeft className="w-5 h-5 text-slate-600" />
+                </button>
+                <div>
+                  <h2 className="text-slate-900">Items Needing Review</h2>
+                  <p className="text-slate-600 text-sm">
+                    {activeExceptions.filter(item => filterBy === 'all' || item.category === filterBy).length} item{activeExceptions.filter(item => filterBy === 'all' || item.category === filterBy).length !== 1 ? 's' : ''} requiring your attention
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowAllReviewModal(false)}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+
+            {/* Filter and Sort Controls */}
+            <div className="px-6 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-slate-600">Filter by:</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setFilterBy('all')}
+                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                      filterBy === 'all' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => setFilterBy('lowConfidence')}
+                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                      filterBy === 'lowConfidence' 
+                        ? 'bg-red-600 text-white' 
+                        : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    Low Confidence
+                  </button>
+                  <button
+                    onClick={() => setFilterBy('missingDoc')}
+                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                      filterBy === 'missingDoc' 
+                        ? 'bg-amber-600 text-white' 
+                        : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    Missing Docs
+                  </button>
+                  <button
+                    onClick={() => setFilterBy('multipleHTS')}
+                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                      filterBy === 'multipleHTS' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    Multiple HTS
+                  </button>
+                  <button
+                    onClick={() => setFilterBy('materialIssues')}
+                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                      filterBy === 'materialIssues' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    Material Issues
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-slate-600">Sort by:</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as 'priority' | 'product')}
+                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="priority">Priority</option>
+                  <option value="product">Product Name</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Modal Content - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-3">
+                {activeExceptions
+                  .filter(item => filterBy === 'all' || item.category === filterBy)
+                  .sort((a, b) => {
+                    if (sortBy === 'priority') {
+                      const priorityOrder = { high: 0, medium: 1, low: 2 };
+                      return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
+                    } else if (sortBy === 'product') {
+                      return a.product.localeCompare(b.product);
+                    }
+                    return 0;
+                  })
+                  .map((item) => (
+                    <div 
+                      key={item.id}
+                      className="bg-white border border-slate-200 rounded-lg p-4 hover:border-blue-400 hover:shadow-md transition-all cursor-pointer group"
+                      onClick={() => {
+                        setShowAllReviewModal(false);
+                        setSelectedException(item);
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex-1 min-w-0 flex items-center gap-3">
+                          <AlertCircle className={`w-5 h-5 flex-shrink-0 ${
+                            item.priority === 'high' ? 'text-red-600' : 
+                            item.priority === 'medium' ? 'text-amber-600' : 'text-blue-600'
+                          }`} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-slate-900 truncate">{item.product}</span>
+                              <span className={`px-2 py-0.5 rounded text-xs border flex-shrink-0 ${getPriorityColor(item.priority)}`}>
+                                {item.priority}
+                              </span>
+                            </div>
+                            <div className="text-sm text-red-700 mb-1">{item.reason}</div>
+                            <div className="flex items-center gap-3 text-xs text-slate-500">
+                              <span>SKU: {item.sku}</span>
+                              <span>•</span>
+                              <span>HTS: {item.hts}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowAllReviewModal(false);
+                              setSelectedException(item);
+                            }}
+                            className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm opacity-0 group-hover:opacity-100"
+                          >
+                            Review
+                          </button>
+                          <ChevronRight className="w-5 h-5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                
+                {activeExceptions.filter(item => filterBy === 'all' || item.category === filterBy).length === 0 && (
+                  <div className="text-center py-12">
+                    <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                    <h3 className="text-slate-900 mb-2">No items found</h3>
+                    <p className="text-slate-600">Try adjusting your filters to see more items.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-slate-600">
+                  Click any item to review and resolve
+                </div>
+                <button
+                  onClick={() => setShowAllReviewModal(false)}
+                  className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors text-sm"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {showSuccessNotification && (
