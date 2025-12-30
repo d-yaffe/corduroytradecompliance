@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import logo from 'figma:asset/8dffc9a46764dc298d3dc392fb46f27f3eb8c7e5.png';
+import { supabase } from '../../lib/supabase';
 
 interface LoginFormProps {
-  onLogin: (email: string, password: string) => void;
+  onLogin: (user: any) => void;
   onSwitchToSignUp: () => void;
   onSwitchToResetPassword: () => void;
 }
@@ -32,11 +33,28 @@ export function LoginForm({ onLogin, onSwitchToSignUp, onSwitchToResetPassword }
 
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      // Sign in with Supabase Auth
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        setError(signInError.message || 'Invalid email or password');
+        setIsLoading(false);
+        return;
+      }
+
+      if (data.user) {
+        // Pass Supabase Auth user data directly
+        onLogin(data.user);
+      }
+    } catch (err: any) {
+      setError(err.message || 'An error occurred during login');
+    } finally {
       setIsLoading(false);
-      onLogin(email, password);
-    }, 1000);
+    }
   };
 
   return (
@@ -152,17 +170,6 @@ export function LoginForm({ onLogin, onSwitchToSignUp, onSwitchToResetPassword }
             >
               Sign up for free
             </button>
-          </p>
-        </div>
-
-        {/* Demo Credentials */}
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-blue-900 text-sm mb-2">
-            <strong>Demo Credentials:</strong>
-          </p>
-          <p className="text-blue-800 text-xs">
-            Email: demo@usecorduroy.com<br />
-            Password: demo123
           </p>
         </div>
       </div>

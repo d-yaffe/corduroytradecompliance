@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dashboard } from './components/Dashboard';
 import { UnifiedClassification } from './components/UnifiedClassification';
 import { ProductProfile } from './components/ProductProfile';
@@ -11,11 +11,13 @@ import { WelcomeScreen } from './components/auth/WelcomeScreen';
 import { OnboardingFlow } from './components/auth/OnboardingFlow';
 import { Package, FileText, LayoutDashboard, LogOut, User, Settings as SettingsIcon } from 'lucide-react';
 import logo from 'figma:asset/8dffc9a46764dc298d3dc392fb46f27f3eb8c7e5.png';
+import { supabase } from './lib/supabase';
 
 type View = 'dashboard' | 'classify' | 'profile' | 'settings';
 type AuthView = 'login' | 'signup' | 'reset-password' | 'new-password';
 
 interface UserData {
+  id: string;
   email: string;
   firstName?: string;
   lastName?: string;
@@ -31,13 +33,57 @@ export default function App() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check for existing session on mount
+  useEffect(() => {
+    checkSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        loadUserData(session.user);
+      } else {
+        setIsAuthenticated(false);
+        setUser(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const checkSession = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        loadUserData(session.user);
+      }
+    } catch (error) {
+      console.error('Error checking session:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadUserData = async (supabaseUser: any) => {
+    // Use Supabase Auth user data directly
+    setUser({
+      id: supabaseUser.id,
+      email: supabaseUser.email || '',
+      firstName: supabaseUser.user_metadata?.first_name || supabaseUser.user_metadata?.firstName,
+      lastName: supabaseUser.user_metadata?.last_name || supabaseUser.user_metadata?.lastName,
+      company: supabaseUser.user_metadata?.company,
+      hasCompletedOnboarding: supabaseUser.user_metadata?.has_completed_onboarding ?? true,
+    });
+
+    setIsAuthenticated(true);
+  };
 
   // Authentication handlers
-  const handleLogin = (email: string, password: string) => {
-    // In a real app, this would validate credentials with a backend
-    // and check if user has completed onboarding
-    setUser({ email, hasCompletedOnboarding: true }); // Existing users have completed onboarding
-    setIsAuthenticated(true);
+  const handleLogin = (supabaseUser: any) => {
+    loadUserData(supabaseUser);
   };
 
   const handleSignUp = (data: SignUpData) => {
@@ -63,12 +109,29 @@ export default function App() {
     setAuthView('login');
   };
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setUser(null);
-    setCurrentView('dashboard');
-    setShowUserMenu(false);
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setIsAuthenticated(false);
+      setUser(null);
+      setCurrentView('dashboard');
+      setShowUserMenu(false);
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
+
+  // Show loading state while checking session
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   // If not authenticated, show auth screens
   if (!isAuthenticated) {
