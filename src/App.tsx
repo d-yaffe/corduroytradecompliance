@@ -12,6 +12,7 @@ import { OnboardingFlow } from './components/auth/OnboardingFlow';
 import { Package, FileText, LayoutDashboard, LogOut, User, Settings as SettingsIcon } from 'lucide-react';
 import logo from './assets/8dffc9a46764dc298d3dc392fb46f27f3eb8c7e5.png';
 import { supabase } from './lib/supabase';
+import { getUserMetadata, updateLastLogin, createOrUpdateUserMetadata } from './lib/userService';
 
 type View = 'dashboard' | 'classify' | 'profile' | 'settings';
 type AuthView = 'login' | 'signup' | 'reset-password' | 'new-password';
@@ -22,6 +23,8 @@ interface UserData {
   firstName?: string;
   lastName?: string;
   company?: string;
+  companyName?: string;
+  confidenceThreshold?: number;
   hasCompletedOnboarding?: boolean;
 }
 
@@ -68,17 +71,41 @@ export default function App() {
   };
 
   const loadUserData = async (supabaseUser: any) => {
-    // Use Supabase Auth user data directly
-    setUser({
-      id: supabaseUser.id,
-      email: supabaseUser.email || '',
-      firstName: supabaseUser.user_metadata?.first_name || supabaseUser.user_metadata?.firstName,
-      lastName: supabaseUser.user_metadata?.last_name || supabaseUser.user_metadata?.lastName,
-      company: supabaseUser.user_metadata?.company,
-      hasCompletedOnboarding: supabaseUser.user_metadata?.has_completed_onboarding ?? true,
-    });
+    try {
+      // Fetch user metadata from user_metadata table
+      const userMetadata = await getUserMetadata(supabaseUser.id);
+      
+      // Update last login timestamp
+      await updateLastLogin(supabaseUser.id);
 
-    setIsAuthenticated(true);
+      // Extract profile info if available
+      const profileInfo = userMetadata?.profile_info || {};
+      
+      setUser({
+        id: supabaseUser.id,
+        email: userMetadata?.email || supabaseUser.email || '',
+        firstName: profileInfo.first_name || profileInfo.firstName || supabaseUser.user_metadata?.first_name,
+        lastName: profileInfo.last_name || profileInfo.lastName || supabaseUser.user_metadata?.last_name,
+        company: userMetadata?.company_name || supabaseUser.user_metadata?.company,
+        companyName: userMetadata?.company_name,
+        confidenceThreshold: userMetadata?.confidence_threshold,
+        hasCompletedOnboarding: profileInfo.has_completed_onboarding ?? true,
+      });
+
+      setIsAuthenticated(true);
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      // Fallback to basic user data if metadata fetch fails
+      setUser({
+        id: supabaseUser.id,
+        email: supabaseUser.email || '',
+        firstName: supabaseUser.user_metadata?.first_name,
+        lastName: supabaseUser.user_metadata?.last_name,
+        company: supabaseUser.user_metadata?.company,
+        hasCompletedOnboarding: true,
+      });
+      setIsAuthenticated(true);
+    }
   };
 
   // Authentication handlers
@@ -86,17 +113,58 @@ export default function App() {
     loadUserData(supabaseUser);
   };
 
-  const handleSignUp = (data: SignUpData) => {
-    // In a real app, this would create the user account on the backend
-    setUser({
-      email: data.email,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      company: data.company,
-      hasCompletedOnboarding: false, // New users haven't completed onboarding
-    });
-    setShowWelcome(true); // Show welcome screen for new users
-    setIsAuthenticated(true);
+  const handleSignUp = async (data: SignUpData) => {
+    try {
+      // Wait a moment for Supabase Auth to process the signup
+      // The user should be available from the signup response
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Get the current user (should be authenticated after signup)
+      const { data: { user: supabaseUser }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !supabaseUser) {
+        console.error('Error getting user after signup:', userError);
+        // Fallback - user metadata will be created by trigger, but we'll set basic user data
+        setUser({
+          id: '',
+          email: data.email,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          company: data.company,
+          companyName: data.company,
+          hasCompletedOnboarding: false,
+        });
+        setShowWelcome(true);
+        setIsAuthenticated(true);
+        return;
+      }
+
+      // Create or update user metadata with company name
+      // Note: The trigger should have already created user_metadata, but we update company_name
+      await createOrUpdateUserMetadata(
+        supabaseUser.id,
+        data.email,
+        data.company
+      );
+
+      // Load full user data (which will fetch from user_metadata table)
+      await loadUserData(supabaseUser);
+      
+      setShowWelcome(true); // Show welcome screen for new users
+    } catch (error) {
+      console.error('Error during signup:', error);
+      // Fallback
+      setUser({
+        id: '',
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        company: data.company,
+        hasCompletedOnboarding: false,
+      });
+      setShowWelcome(true);
+      setIsAuthenticated(true);
+    }
   };
 
   const handleResetPassword = (email: string) => {

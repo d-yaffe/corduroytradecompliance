@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Mail, Lock, User, Building, AlertCircle, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import logo from '@/assets/8dffc9a46764dc298d3dc392fb46f27f3eb8c7e5.png';
+import { supabase } from '../../lib/supabase';
 
 interface SignUpFormProps {
   onSignUp: (data: SignUpData) => void;
@@ -66,17 +67,40 @@ export function SignUpForm({ onSignUp, onSwitchToLogin }: SignUpFormProps) {
 
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      onSignUp({
-        firstName,
-        lastName,
+    try {
+      // Create user in Supabase Auth
+      const { data, error: signUpError } = await supabase.auth.signUp({
         email,
-        company,
         password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            company: company,
+          }
+        }
       });
-    }, 1500);
+
+      if (signUpError) {
+        setError(signUpError.message || 'Failed to create account');
+        setIsLoading(false);
+        return;
+      }
+
+      if (data.user) {
+        // Pass signup data to parent (which will handle user_metadata creation)
+        onSignUp({
+          firstName,
+          lastName,
+          email,
+          company,
+          password,
+        });
+      }
+    } catch (err: any) {
+      setError(err.message || 'An error occurred during signup');
+      setIsLoading(false);
+    }
   };
 
   return (
