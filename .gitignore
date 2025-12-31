@@ -41,5 +41,6 @@ server/node_modules/
 
 # Supabase
 .supabase/
+SUPABASE_SCHEMA.md
 
 
