@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Lock, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import logo from '@/assets/8dffc9a46764dc298d3dc392fb46f27f3eb8c7e5.png';
+import { supabase } from '../../lib/supabase';
 
 interface NewPasswordFormProps {
   onResetComplete: () => void;
@@ -13,6 +14,25 @@ export function NewPasswordForm({ onResetComplete }: NewPasswordFormProps) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isValidSession, setIsValidSession] = useState(false);
+
+  // Check if we have a valid password reset session
+  useEffect(() => {
+    const checkSession = async () => {
+      // Wait a bit for Supabase to process the URL hash
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error || !session) {
+        setError('Invalid or expired reset link. Please request a new password reset.');
+        setIsValidSession(false);
+      } else {
+        setIsValidSession(true);
+      }
+    };
+    checkSession();
+  }, []);
 
   const passwordRequirements = [
     { label: 'At least 8 characters', met: password.length >= 8 },
@@ -39,13 +59,34 @@ export function NewPasswordForm({ onResetComplete }: NewPasswordFormProps) {
       return;
     }
 
+    if (!isValidSession) {
+      setError('Invalid or expired reset link. Please request a new password reset.');
+      return;
+    }
+
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Update password via Supabase Auth
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: password
+      });
+
+      if (updateError) {
+        setError(updateError.message || 'Failed to update password');
+        setIsLoading(false);
+        return;
+      }
+
+      // Password updated successfully - sign out the temporary reset session
+      await supabase.auth.signOut();
+
+      // Call completion handler (which will show login)
       onResetComplete();
-    }, 1500);
+    } catch (err: any) {
+      setError(err.message || 'An error occurred while updating password');
+      setIsLoading(false);
+    }
   };
 
   return (

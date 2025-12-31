@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Mail, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
 import logo from '@/assets/8dffc9a46764dc298d3dc392fb46f27f3eb8c7e5.png';
+import { supabase } from '../../lib/supabase';
 
 interface ResetPasswordFormProps {
   onRequestReset: (email: string) => void;
@@ -29,12 +30,24 @@ export function ResetPasswordForm({ onRequestReset, onBackToLogin }: ResetPasswo
 
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Send password reset email via Supabase Auth
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (resetError) {
+        setError(resetError.message || 'Failed to send reset email');
+        setIsLoading(false);
+        return;
+      }
+
       setEmailSent(true);
       onRequestReset(email);
-    }, 1500);
+    } catch (err: any) {
+      setError(err.message || 'An error occurred while sending reset email');
+      setIsLoading(false);
+    }
   };
 
   if (emailSent) {

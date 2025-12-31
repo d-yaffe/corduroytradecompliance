@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Save, Building2, Lock, Sliders, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { getUserMetadata, updateUserMetadata } from '../lib/userService';
 
 export function Settings() {
   // Account Settings
@@ -13,14 +15,39 @@ export function Settings() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   // Company Details
-  const [companyName, setCompanyName] = useState('Acme Corporation');
+  const [companyName, setCompanyName] = useState('');
   const [companyMessage, setCompanyMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [isLoadingCompany, setIsLoadingCompany] = useState(true);
 
   // Automation Settings
-  const [autoApprovalThreshold, setAutoApprovalThreshold] = useState(95);
+  const [autoApprovalThreshold, setAutoApprovalThreshold] = useState(80);
   const [automationMessage, setAutomationMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [isLoadingAutomation, setIsLoadingAutomation] = useState(true);
 
-  const handlePasswordChange = (e: React.FormEvent) => {
+  // Load user metadata on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const metadata = await getUserMetadata(user.id);
+          if (metadata) {
+            setCompanyName(metadata.company_name || '');
+            setAutoApprovalThreshold((metadata.confidence_threshold || 0.8) * 100); // Convert from 0-1 to 0-100
+          }
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      } finally {
+        setIsLoadingCompany(false);
+        setIsLoadingAutomation(false);
+      }
+    };
+
+    loadSettings();
+  }, []);
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validation
@@ -39,46 +66,114 @@ export function Settings() {
       return;
     }
 
-    // Simulate password change
-    setPasswordMessage({ type: 'success', text: 'Password updated successfully' });
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    try {
+      // Verify current password by attempting to re-authenticate
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !user.email) {
+        setPasswordMessage({ type: 'error', text: 'User not found' });
+        return;
+      }
 
-    // Clear message after 3 seconds
-    setTimeout(() => setPasswordMessage(null), 3000);
+      // Re-authenticate with current password
+      const { error: reAuthError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+      });
+
+      if (reAuthError) {
+        setPasswordMessage({ type: 'error', text: 'Current password is incorrect' });
+        return;
+      }
+
+      // Update password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (updateError) {
+        setPasswordMessage({ type: 'error', text: updateError.message || 'Failed to update password' });
+        return;
+      }
+
+      setPasswordMessage({ type: 'success', text: 'Password updated successfully' });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+
+      // Clear message after 3 seconds
+      setTimeout(() => setPasswordMessage(null), 3000);
+    } catch (error: any) {
+      setPasswordMessage({ type: 'error', text: error.message || 'An error occurred while updating password' });
+    }
   };
 
-  const handleCompanySave = (e: React.FormEvent) => {
+  const handleCompanySave = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validation
-    if (!companyName) {
+    if (!companyName.trim()) {
       setCompanyMessage({ type: 'error', text: 'Company name is required' });
       return;
     }
 
-    // Simulate save
-    setCompanyMessage({ type: 'success', text: 'Company details saved successfully' });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setCompanyMessage({ type: 'error', text: 'User not found' });
+        return;
+      }
 
-    // Clear message after 3 seconds
-    setTimeout(() => setCompanyMessage(null), 3000);
+      const updated = await updateUserMetadata(user.id, {
+        company_name: companyName.trim(),
+      });
+
+      if (updated) {
+        setCompanyMessage({ type: 'success', text: 'Company details saved successfully' });
+        setTimeout(() => setCompanyMessage(null), 3000);
+      } else {
+        setCompanyMessage({ type: 'error', text: 'Failed to save company details' });
+        setTimeout(() => setCompanyMessage(null), 3000);
+      }
+    } catch (error: any) {
+      setCompanyMessage({ type: 'error', text: error.message || 'An error occurred while saving' });
+      setTimeout(() => setCompanyMessage(null), 3000);
+    }
   };
 
-  const handleAutomationSave = (e: React.FormEvent) => {
+  const handleAutomationSave = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validation
-    if (autoApprovalThreshold < 80) {
-      setAutomationMessage({ type: 'error', text: 'Auto-approval threshold must be at least 80%' });
+    if (autoApprovalThreshold < 0 || autoApprovalThreshold > 100) {
+      setAutomationMessage({ type: 'error', text: 'Auto-approval threshold must be between 0 and 100%' });
       return;
     }
 
-    // Simulate save
-    setAutomationMessage({ type: 'success', text: 'Automation settings saved successfully' });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setAutomationMessage({ type: 'error', text: 'User not found' });
+        return;
+      }
 
-    // Clear message after 3 seconds
-    setTimeout(() => setAutomationMessage(null), 3000);
+      // Convert from 0-100 to 0-1 for database (confidence_threshold is stored as float 0-1)
+      const confidenceThreshold = autoApprovalThreshold / 100;
+
+      const updated = await updateUserMetadata(user.id, {
+        confidence_threshold: confidenceThreshold,
+      });
+
+      if (updated) {
+        setAutomationMessage({ type: 'success', text: 'Automation settings saved successfully' });
+        setTimeout(() => setAutomationMessage(null), 3000);
+      } else {
+        setAutomationMessage({ type: 'error', text: 'Failed to save automation settings' });
+        setTimeout(() => setAutomationMessage(null), 3000);
+      }
+    } catch (error: any) {
+      setAutomationMessage({ type: 'error', text: error.message || 'An error occurred while saving' });
+      setTimeout(() => setAutomationMessage(null), 3000);
+    }
   };
 
   return (
@@ -264,19 +359,23 @@ export function Settings() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-sm text-slate-700 mb-2">Company Name *</label>
-                  <input
-                    type="text"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter company name"
-                    required
-                  />
+              {isLoadingCompany ? (
+                <div className="py-4 text-center text-slate-500">Loading company information...</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm text-slate-700 mb-2">Company Name *</label>
+                    <input
+                      type="text"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Enter company name"
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="mt-6 flex justify-end">
                 <button
@@ -320,31 +419,34 @@ export function Settings() {
                 </div>
               )}
 
-              <div className="space-y-6">
-                {/* Auto-Approval Threshold */}
-                <div>
-                  <label className="block text-sm text-slate-700 mb-2">Automatic Approval Threshold</label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={autoApprovalThreshold}
-                      onChange={(e) => {
-                        const value = parseInt(e.target.value) || 0;
-                        if (value >= 0 && value <= 100) {
-                          setAutoApprovalThreshold(value);
-                        }
-                      }}
-                      className="w-32 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="95"
-                    />
-                    <span className="text-slate-700">%</span>
+              {isLoadingAutomation ? (
+                <div className="py-4 text-center text-slate-500">Loading automation settings...</div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Auto-Approval Threshold */}
+                  <div>
+                    <label className="block text-sm text-slate-700 mb-2">Automatic Approval Threshold</label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={autoApprovalThreshold}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value) || 0;
+                          if (value >= 0 && value <= 100) {
+                            setAutoApprovalThreshold(value);
+                          }
+                        }}
+                        className="w-32 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="80"
+                      />
+                      <span className="text-slate-700">%</span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">
+                      Classifications with confidence ≥ {autoApprovalThreshold}% will be automatically approved without human review
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-500 mt-2">
-                    Classifications with confidence ≥ {autoApprovalThreshold}% will be automatically approved without human review
-                  </p>
-                </div>
 
                 {/* Visual Guide */}
                 <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
@@ -364,6 +466,7 @@ export function Settings() {
                     </div>
                   </div>
                 </div>
+              )}
               </div>
 
               <div className="mt-6 flex justify-end">

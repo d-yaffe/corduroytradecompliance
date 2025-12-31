@@ -40,7 +40,18 @@ export default function App() {
 
   // Check for existing session on mount
   useEffect(() => {
-    checkSession();
+    // Check for password reset token in URL hash
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const type = hashParams.get('type');
+    
+    if (type === 'recovery') {
+      // User came from password reset email link
+      setAuthView('new-password');
+      // Clear the hash from URL
+      window.history.replaceState(null, '', window.location.pathname);
+    } else {
+      checkSession();
+    }
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
