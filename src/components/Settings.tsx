@@ -466,8 +466,8 @@ export function Settings() {
                     </div>
                   </div>
                 </div>
+                </div>
               )}
-              </div>
 
               <div className="mt-6 flex justify-end">
                 <button
