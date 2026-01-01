@@ -18,11 +18,15 @@ export function Settings() {
   const [companyName, setCompanyName] = useState('');
   const [companyMessage, setCompanyMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [isLoadingCompany, setIsLoadingCompany] = useState(true);
+  const [isEditingCompany, setIsEditingCompany] = useState(false);
+  const [originalCompanyName, setOriginalCompanyName] = useState('');
 
   // Automation Settings
   const [autoApprovalThreshold, setAutoApprovalThreshold] = useState(80);
   const [automationMessage, setAutomationMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [isLoadingAutomation, setIsLoadingAutomation] = useState(true);
+  const [isEditingAutomation, setIsEditingAutomation] = useState(false);
+  const [originalThreshold, setOriginalThreshold] = useState(80);
 
   // Load user metadata on mount
   useEffect(() => {
@@ -44,13 +48,19 @@ export function Settings() {
           
           if (metadata) {
             console.log('Loaded metadata:', metadata);
-            setCompanyName(metadata.company_name || '');
-            setAutoApprovalThreshold((metadata.confidence_threshold || 0.8) * 100); // Convert from 0-1 to 0-100
+            const company = metadata.company_name || '';
+            const threshold = (metadata.confidence_threshold || 0.8) * 100;
+            setCompanyName(company);
+            setOriginalCompanyName(company);
+            setAutoApprovalThreshold(threshold);
+            setOriginalThreshold(threshold);
           } else {
             console.log('No metadata found, using defaults');
             // Use defaults if no metadata exists
             setCompanyName('');
+            setOriginalCompanyName('');
             setAutoApprovalThreshold(80);
+            setOriginalThreshold(80);
           }
         } else {
           console.log('No user found');
@@ -131,6 +141,17 @@ export function Settings() {
     }
   };
 
+  const handleCompanyEdit = () => {
+    setOriginalCompanyName(companyName);
+    setIsEditingCompany(true);
+  };
+
+  const handleCompanyCancel = () => {
+    setCompanyName(originalCompanyName);
+    setIsEditingCompany(false);
+    setCompanyMessage(null);
+  };
+
   const handleCompanySave = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -152,7 +173,9 @@ export function Settings() {
       });
 
       if (updated) {
+        setOriginalCompanyName(companyName.trim());
         setCompanyMessage({ type: 'success', text: 'Company details saved successfully' });
+        setIsEditingCompany(false);
         setTimeout(() => setCompanyMessage(null), 3000);
       } else {
         setCompanyMessage({ type: 'error', text: 'Failed to save company details' });
@@ -162,6 +185,17 @@ export function Settings() {
       setCompanyMessage({ type: 'error', text: error.message || 'An error occurred while saving' });
       setTimeout(() => setCompanyMessage(null), 3000);
     }
+  };
+
+  const handleAutomationEdit = () => {
+    setOriginalThreshold(autoApprovalThreshold);
+    setIsEditingAutomation(true);
+  };
+
+  const handleAutomationCancel = () => {
+    setAutoApprovalThreshold(originalThreshold);
+    setIsEditingAutomation(false);
+    setAutomationMessage(null);
   };
 
   const handleAutomationSave = async (e: React.FormEvent) => {
@@ -188,7 +222,9 @@ export function Settings() {
       });
 
       if (updated) {
+        setOriginalThreshold(autoApprovalThreshold);
         setAutomationMessage({ type: 'success', text: 'Automation settings saved successfully' });
+        setIsEditingAutomation(false);
         setTimeout(() => setAutomationMessage(null), 3000);
       } else {
         setAutomationMessage({ type: 'error', text: 'Failed to save automation settings' });
@@ -393,7 +429,11 @@ export function Settings() {
                       type="text"
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={!isEditingCompany}
+                      readOnly={!isEditingCompany}
+                      className={`w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        !isEditingCompany ? 'bg-slate-50 text-slate-600 cursor-not-allowed' : ''
+                      }`}
                       placeholder="Enter company name"
                       required
                     />
@@ -401,14 +441,34 @@ export function Settings() {
                 </div>
               )}
 
-              <div className="mt-6 flex justify-end">
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                >
-                  <Save className="w-4 h-4" />
-                  Save Company Details
-                </button>
+              <div className="mt-6 flex justify-end gap-3">
+                {isEditingCompany ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleCompanyCancel}
+                      className="px-4 py-2 text-slate-600 hover:text-slate-900 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                    >
+                      <Save className="w-4 h-4" />
+                      Save Company Details
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleCompanyEdit}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    Edit Company Details
+                  </button>
+                )}
               </div>
             </form>
           </div>
@@ -462,7 +522,11 @@ export function Settings() {
                             setAutoApprovalThreshold(value);
                           }
                         }}
-                        className="w-32 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        disabled={!isEditingAutomation}
+                        readOnly={!isEditingAutomation}
+                        className={`w-32 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          !isEditingAutomation ? 'bg-slate-50 text-slate-600 cursor-not-allowed' : ''
+                        }`}
                         placeholder="80"
                       />
                       <span className="text-slate-700">%</span>
@@ -493,14 +557,34 @@ export function Settings() {
                 </div>
               )}
 
-              <div className="mt-6 flex justify-end">
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                >
-                  <Save className="w-4 h-4" />
-                  Save Automation Settings
-                </button>
+              <div className="mt-6 flex justify-end gap-3">
+                {isEditingAutomation ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleAutomationCancel}
+                      className="px-4 py-2 text-slate-600 hover:text-slate-900 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                    >
+                      <Save className="w-4 h-4" />
+                      Save Automation Settings
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleAutomationEdit}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    Edit Automation Settings
+                  </button>
+                )}
               </div>
             </form>
           </div>
