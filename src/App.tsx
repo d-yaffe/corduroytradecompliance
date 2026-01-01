@@ -45,6 +45,22 @@ export default function App() {
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const type = hashParams.get('type');
     
+    // Check for explicit logout parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const shouldLogout = urlParams.get('logout') === 'true';
+    
+    if (shouldLogout) {
+      // User explicitly wants to logout, clear session
+      supabase.auth.signOut().then(() => {
+        setIsAuthenticated(false);
+        setUser(null);
+        setIsLoading(false);
+        // Remove logout parameter from URL
+        window.history.replaceState(null, '', window.location.pathname);
+      });
+      return;
+    }
+    
     if (type === 'recovery') {
       // User came from password reset email link
       setAuthView('new-password');
@@ -56,12 +72,16 @@ export default function App() {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
+      // Only auto-login on SIGNED_IN event, not on every state change
+      // This prevents auto-login when user is already on login page
+      if (_event === 'SIGNED_IN' && session) {
         loadUserData(session.user);
-      } else {
+      } else if (_event === 'SIGNED_OUT' || !session) {
+        // Session ended, log out
         setIsAuthenticated(false);
         setUser(null);
       }
+      // For other events (like TOKEN_REFRESHED), don't auto-login if already on login page
     });
 
     return () => {
@@ -71,9 +91,16 @@ export default function App() {
 
   const checkSession = async () => {
     try {
+      // Check if user explicitly wants to skip auto-login (e.g., after logout)
+      const skipAutoLogin = sessionStorage.getItem('skipAutoLogin') === 'true';
+      
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
+      if (session?.user && !skipAutoLogin) {
+        // Only auto-login if user hasn't explicitly skipped it
         loadUserData(session.user);
+      } else if (skipAutoLogin) {
+        // Clear the flag after checking
+        sessionStorage.removeItem('skipAutoLogin');
       }
     } catch (error) {
       console.error('Error checking session:', error);
@@ -141,6 +168,8 @@ export default function App() {
 
   // Authentication handlers
   const handleLogin = (supabaseUser: any) => {
+    // Clear skip auto-login flag on successful login
+    sessionStorage.removeItem('skipAutoLogin');
     loadUserData(supabaseUser);
   };
 
@@ -210,11 +239,14 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
+      // Set flag to skip auto-login after logout
+      sessionStorage.setItem('skipAutoLogin', 'true');
       await supabase.auth.signOut();
       setIsAuthenticated(false);
       setUser(null);
       setCurrentView('dashboard');
       setShowUserMenu(false);
+      setAuthView('login');
     } catch (error) {
       console.error('Error signing out:', error);
     }
