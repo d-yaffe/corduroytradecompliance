@@ -156,18 +156,22 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           <div className="xl:col-span-2 space-y-6">
             {/* Quick Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {stats.map((stat) => (
-                <div key={stat.label} className="bg-white rounded-xl p-4 lg:p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className={`${stat.bg} ${stat.color} p-2.5 rounded-lg`}>
-                      <stat.icon className="w-5 h-5" />
+              {isLoadingStats ? (
+                <div className="col-span-4 text-center text-slate-500 py-4">Loading stats...</div>
+              ) : (
+                stats.map((stat) => (
+                  <div key={stat.label} className="bg-white rounded-xl p-4 lg:p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className={`${stat.bg} ${stat.color} p-2.5 rounded-lg`}>
+                        <stat.icon className="w-5 h-5" />
+                      </div>
                     </div>
+                    <div className={`${stat.color} mb-1 text-2xl lg:text-3xl`}>{stat.value}</div>
+                    <div className="text-slate-600 text-sm">{stat.label}</div>
+                    <div className="text-slate-500 text-xs mt-1">{stat.subtext}</div>
                   </div>
-                  <div className={`${stat.color} mb-1 text-2xl lg:text-3xl`}>{stat.value}</div>
-                  <div className="text-slate-600 text-sm">{stat.label}</div>
-                  <div className="text-slate-500 text-xs mt-1">{stat.subtext}</div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
 
             {/* Actions Required */}
