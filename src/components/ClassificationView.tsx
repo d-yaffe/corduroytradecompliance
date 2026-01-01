@@ -126,12 +126,10 @@ export function ClassificationView() {
       };
 
       // Step 1: Preprocess
-      let preprocessResponse;
-      try {
-        preprocessResponse = await preprocessProduct(inputData);
-      } catch (error: any) {
-        console.error('Preprocess error:', error);
-        throw error;
+      let preprocessResponse = await preprocessProduct(inputData);
+      if (!preprocessResponse) {
+        setLoading(false);
+        return; // Silently fail
       }
 
       // Check if preprocess returned clarification questions
@@ -162,12 +160,10 @@ export function ClassificationView() {
 
       // Step 2: Parse (if preprocess passed)
       setCurrentStep('parse');
-      let parseResponse;
-      try {
-        parseResponse = await parseProduct(preprocessResponse || inputData);
-      } catch (error: any) {
-        console.error('Parse error:', error);
-        throw error;
+      let parseResponse = await parseProduct(preprocessResponse || inputData);
+      if (!parseResponse) {
+        setLoading(false);
+        return; // Silently fail
       }
 
       // Check if parse returned clarification questions
@@ -201,33 +197,24 @@ export function ClassificationView() {
 
       // Step 3: Apply Rules (get HTS code)
       setCurrentStep('rules');
-      let rulesResponse;
-      try {
-        rulesResponse = await applyRules(parseResponse || preprocessResponse || inputData);
-      } catch (error: any) {
-        console.error('Rules error:', error);
-        throw error;
+      let rulesResponse = await applyRules(parseResponse || preprocessResponse || inputData);
+      if (!rulesResponse) {
+        setLoading(false);
+        return; // Silently fail
       }
 
       // Step 4: Get Rulings
       setCurrentStep('rulings');
-      let rulingsResponse;
-      try {
-        rulingsResponse = await generateRuling(
-          `Get rulings and documentation for HTS code ${rulesResponse?.hts || rulesResponse?.hts_classification || ''}`,
-          [],
-          {
-            name: parseResponse?.product_name || query,
-            description: parseResponse?.product_description || productDescription,
-            hts: rulesResponse?.hts || rulesResponse?.hts_classification,
-            origin: parseResponse?.country_of_origin || originCountry,
-          }
-        );
-      } catch (error: any) {
-        console.error('Rulings error:', error);
-        // Don't fail if rulings fail, just continue without them
-        rulingsResponse = null;
-      }
+      let rulingsResponse = await generateRuling(
+        `Get rulings and documentation for HTS code ${rulesResponse?.hts || rulesResponse?.hts_classification || ''}`,
+        [],
+        {
+          name: parseResponse?.product_name || query,
+          description: parseResponse?.product_description || productDescription,
+          hts: rulesResponse?.hts || rulesResponse?.hts_classification,
+          origin: parseResponse?.country_of_origin || originCountry,
+        }
+      ).catch(() => null); // Silently fail if rulings fail
 
       // Format result
       const classificationResult: ClassificationResultData = {
@@ -273,7 +260,7 @@ export function ClassificationView() {
       setLoading(false);
     } catch (error: any) {
       console.error('Classification error:', error);
-      alert(error.message || 'An error occurred during classification. Please try again.');
+      // Silently handle error - don't show alert
       setLoading(false);
       setCurrentStep(null);
     }
@@ -319,6 +306,11 @@ export function ClassificationView() {
         setIsProcessingClarification(false);
         return;
       }
+      
+      if (!responseData) {
+        setIsProcessingClarification(false);
+        return; // Silently fail
+      }
 
       // Check if still needs clarification
       if (responseData?.needs_clarification || responseData?.questions) {
@@ -348,6 +340,11 @@ export function ClassificationView() {
       if (currentStep === 'preprocess') {
         setCurrentStep('parse');
         const parseResponse = await parseProduct(responseData || inputData);
+        
+        if (!parseResponse) {
+          setIsProcessingClarification(false);
+          return; // Silently fail
+        }
         
         if (parseResponse?.needs_clarification || parseResponse?.questions) {
           const questions = Array.isArray(parseResponse.questions) 
@@ -380,22 +377,22 @@ export function ClassificationView() {
       setCurrentStep('rules');
       const rulesResponse = await applyRules(responseData || inputData);
       
-      setCurrentStep('rulings');
-      let rulingsResponse;
-      try {
-        rulingsResponse = await generateRuling(
-          `Get rulings and documentation for HTS code ${rulesResponse?.hts || rulesResponse?.hts_classification || ''}`,
-          [],
-          {
-            name: responseData?.product_name || query,
-            description: responseData?.product_description || productDescription,
-            hts: rulesResponse?.hts || rulesResponse?.hts_classification,
-            origin: responseData?.country_of_origin || originCountry,
-          }
-        );
-      } catch (error) {
-        rulingsResponse = null;
+      if (!rulesResponse) {
+        setIsProcessingClarification(false);
+        return; // Silently fail
       }
+      
+      setCurrentStep('rulings');
+      const rulingsResponse = await generateRuling(
+        `Get rulings and documentation for HTS code ${rulesResponse?.hts || rulesResponse?.hts_classification || ''}`,
+        [],
+        {
+          name: responseData?.product_name || query,
+          description: responseData?.product_description || productDescription,
+          hts: rulesResponse?.hts || rulesResponse?.hts_classification,
+          origin: responseData?.country_of_origin || originCountry,
+        }
+      ).catch(() => null); // Silently fail if rulings fail
 
       // Format and display result
       const classificationResult: ClassificationResultData = {
@@ -443,7 +440,7 @@ export function ClassificationView() {
       setIsProcessingClarification(false);
     } catch (error: any) {
       console.error('Clarification response error:', error);
-      alert(error.message || 'An error occurred. Please try again.');
+      // Silently handle error - don't show alert
       setIsProcessingClarification(false);
     }
   };

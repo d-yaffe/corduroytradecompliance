@@ -18,31 +18,10 @@ export async function callPythonProxy(
     });
 
     if (error) {
+      // Silently log error without throwing - return null to indicate failure
       console.error('Supabase Edge Function error:', error);
-      console.error('Error details:', {
-        message: error.message,
-        name: error.name,
-        context: error.context,
-        status: error.status,
-      });
-      
-      // Only show "not deployed" message for actual function not found errors
-      // Check for specific error codes/messages that indicate function doesn't exist
-      const isFunctionNotFound = 
-        error.message?.includes('Function not found') ||
-        error.message?.includes('404') ||
-        (error.status === 404) ||
-        (error.name === 'FunctionsHttpError' && error.status === 404);
-      
-      if (isFunctionNotFound) {
-        throw new Error(
-          'Edge Function not found or not deployed. Please ensure the "python-proxy" edge function is deployed to your Supabase project. ' +
-          'See: https://supabase.com/docs/guides/functions'
-        );
-      }
-      
-      // For other errors, pass through the original error message
-      throw error;
+      // Return null instead of throwing to prevent error messages
+      return null;
     }
 
     // Handle case where response might be a string that needs parsing
@@ -57,15 +36,8 @@ export async function callPythonProxy(
     return response;
   } catch (error: any) {
     console.error('Error calling python-proxy:', error);
-    
-    // Re-throw if it's already a helpful error message
-    if (error.message && error.message.includes('Edge Function not found')) {
-      throw error;
-    }
-    
-    // If the error has a message, use it; otherwise provide a generic one
-    const errorMessage = error.message || error.toString() || 'Failed to call Python backend';
-    throw new Error(errorMessage);
+    // Return null instead of throwing to prevent error messages
+    return null;
   }
 }
 
@@ -81,27 +53,27 @@ export async function generateRuling(
     hts?: string;
     origin?: string;
   }
-): Promise<string> {
-  try {
-    const response = await callPythonProxy('rulings', {
-      message,
-      conversation_history: conversationHistory || [],
-      product_context: productContext || {},
-    });
+): Promise<string | null> {
+  const response = await callPythonProxy('rulings', {
+    message,
+    conversation_history: conversationHistory || [],
+    product_context: productContext || {},
+  });
 
-    // Handle different response formats
-    if (typeof response === 'string') {
-      return response;
-    } else if (response?.response || response?.text || response?.content) {
-      return response.response || response.text || response.content;
-    } else if (response?.data) {
-      return typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
-    }
-
-    return JSON.stringify(response);
-  } catch (error: any) {
-    throw new Error(error.message || 'Failed to generate ruling');
+  if (!response) {
+    return null; // Silently fail
   }
+
+  // Handle different response formats
+  if (typeof response === 'string') {
+    return response;
+  } else if (response?.response || response?.text || response?.content) {
+    return response.response || response.text || response.content;
+  } else if (response?.data) {
+    return typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+  }
+
+  return JSON.stringify(response);
 }
 
 /**
