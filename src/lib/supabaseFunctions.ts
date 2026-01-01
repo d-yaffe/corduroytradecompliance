@@ -18,13 +18,38 @@ export async function callPythonProxy(
     });
 
     if (error) {
+      console.error('Supabase Edge Function error:', error);
+      
+      // Provide more helpful error messages
+      if (error.message?.includes('Failed to send a request') || error.message?.includes('FunctionsFetchError')) {
+        throw new Error(
+          'Edge Function not found or not deployed. Please ensure the "python-proxy" edge function is deployed to your Supabase project. ' +
+          'See: https://supabase.com/docs/guides/functions'
+        );
+      }
+      
       throw error;
+    }
+
+    // Handle case where response might be a string that needs parsing
+    if (typeof response === 'string') {
+      try {
+        return JSON.parse(response);
+      } catch {
+        return response;
+      }
     }
 
     return response;
   } catch (error: any) {
     console.error('Error calling python-proxy:', error);
-    throw new Error(error.message || 'Failed to call Python backend');
+    
+    // Re-throw if it's already a helpful error message
+    if (error.message && error.message.includes('Edge Function not found')) {
+      throw error;
+    }
+    
+    throw new Error(error.message || 'Failed to call Python backend. Please check that the edge function is deployed.');
   }
 }
 
