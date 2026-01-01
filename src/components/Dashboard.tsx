@@ -2,7 +2,7 @@ import { AlertCircle, CheckCircle, Clock, TrendingUp, MessageSquare, Sparkles, C
 import { useState, useEffect } from 'react';
 import { ExceptionReview } from './ExceptionReview';
 import { supabase } from '../lib/supabase';
-import { getExceptions, getRecentActivity } from '../lib/dashboardService';
+import { getExceptions, getRecentActivity, getDashboardStats } from '../lib/dashboardService';
 
 interface DashboardProps {
   onNavigate: (view: 'dashboard' | 'classify' | 'bulk' | 'profile') => void;
@@ -21,6 +21,13 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const [isLoadingExceptions, setIsLoadingExceptions] = useState(true);
   const [aiMessages, setAiMessages] = useState<any[]>([]);
   const [aiInput, setAiInput] = useState('');
+  const [stats, setStats] = useState([
+    { label: 'Exceptions', value: '0', subtext: 'Need Review', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
+    { label: 'Classified', value: '0', subtext: 'This Month', icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
+    { label: 'Product Profiles', value: '0', subtext: 'Total Saved', icon: Package, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Avg Confidence', value: '0%', subtext: 'Approved Products', icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' },
+  ]);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   // Load data from database on mount
   useEffect(() => {
@@ -31,6 +38,16 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
         setIsLoadingExceptions(true);
         setIsLoadingRecentActivity(true);
+        setIsLoadingStats(true);
+
+        // Load stats
+        const dashboardStats = await getDashboardStats(user.id);
+        setStats([
+          { label: 'Exceptions', value: dashboardStats.exceptions.toString(), subtext: 'Need Review', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
+          { label: 'Classified', value: dashboardStats.classified.toLocaleString(), subtext: 'This Month', icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
+          { label: 'Product Profiles', value: dashboardStats.productProfiles.toLocaleString(), subtext: 'Total Saved', icon: Package, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: 'Avg Confidence', value: dashboardStats.avgConfidence, subtext: 'Approved Products', icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' },
+        ]);
 
         // Load exceptions
         const exceptions = await getExceptions(user.id);
@@ -53,22 +70,17 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
         setIsLoadingExceptions(false);
         setIsLoadingRecentActivity(false);
+        setIsLoadingStats(false);
       } catch (error) {
         console.error('Error loading dashboard data:', error);
         setIsLoadingExceptions(false);
         setIsLoadingRecentActivity(false);
+        setIsLoadingStats(false);
       }
     };
 
     loadDashboardData();
   }, []);
-
-  const stats = [
-    { label: 'Exceptions', value: activeExceptions.length.toString(), subtext: 'Need Review', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
-    { label: 'Classified', value: '1,247', subtext: 'This Month', icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
-    { label: 'Product Profiles', value: '342', subtext: 'Total Saved', icon: Package, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Avg Confidence', value: '97.2%', subtext: 'Last 30 Days', icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' },
-  ];
 
   const [recentClassifications, setRecentClassifications] = useState<any[]>([]);
   const [isLoadingRecentActivity, setIsLoadingRecentActivity] = useState(true);

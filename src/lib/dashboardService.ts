@@ -235,3 +235,110 @@ export async function getRecentActivity(userId: string): Promise<RecentActivity[
   }
 }
 
+export interface DashboardStats {
+  exceptions: number;
+  classified: number;
+  productProfiles: number;
+  avgConfidence: string;
+}
+
+/**
+ * Fetch dashboard statistics
+ */
+export async function getDashboardStats(userId: string): Promise<DashboardStats> {
+  try {
+    // 1. Exceptions: All products that have not been approved by user
+    const exceptions = await getExceptions(userId);
+    const exceptionsCount = exceptions.length;
+
+    // 2. Classified: All classification runs by user in the last 1 month
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+    
+    const { data: runs, error: runsError } = await supabase
+      .from('classification_runs')
+      .select('id', { count: 'exact' })
+      .eq('user_id', userId)
+      .eq('status', 'completed')
+      .gte('created_at', oneMonthAgo.toISOString());
+
+    const classifiedCount = runsError ? 0 : (runs?.length || 0);
+
+    // 3. Product Profiles: All products approved by user in total history
+    // Get all approved classification result IDs
+    const { data: approvedHistory, error: approvedError } = await supabase
+      .from('user_product_classification_history')
+      .select('classification_result_id')
+      .eq('approved', true);
+
+    if (approvedError || !approvedHistory || approvedHistory.length === 0) {
+      return {
+        exceptions: exceptionsCount,
+        classified: classifiedCount,
+        productProfiles: 0,
+        avgConfidence: '0%',
+      };
+    }
+
+    const approvedResultIds = approvedHistory.map(h => h.classification_result_id);
+
+    // Get classification results for these approved IDs
+    const { data: approvedResults, error: resultsError } = await supabase
+      .from('user_product_classification_results')
+      .select('id, confidence, product_id')
+      .in('id', approvedResultIds);
+
+    if (resultsError || !approvedResults || approvedResults.length === 0) {
+      return {
+        exceptions: exceptionsCount,
+        classified: classifiedCount,
+        productProfiles: 0,
+        avgConfidence: '0%',
+      };
+    }
+
+    // Get product IDs and filter by user
+    const approvedProductIds = approvedResults.map(r => r.product_id);
+    const { data: userProducts, error: productsError } = await supabase
+      .from('user_products')
+      .select('id')
+      .eq('user_id', userId)
+      .in('id', approvedProductIds);
+
+    const productProfilesCount = productsError ? 0 : (userProducts?.length || 0);
+
+    // 4. Average Confidence: Average confidence level for all approved products in history
+    // Filter approved results by user's products
+    const userProductIds = new Set(userProducts?.map(p => p.id) || []);
+    const userApprovedResults = approvedResults.filter(r => userProductIds.has(r.product_id));
+
+    let avgConfidence = '0%';
+    if (userApprovedResults.length > 0) {
+      const confidences = userApprovedResults
+        .map(r => r.confidence)
+        .filter((c): c is number => c !== null && c !== undefined);
+      
+      if (confidences.length > 0) {
+        const sum = confidences.reduce((acc, val) => acc + val, 0);
+        const avg = (sum / confidences.length) * 100;
+        avgConfidence = `${avg.toFixed(1)}%`;
+      }
+    }
+
+    return {
+      exceptions: exceptionsCount,
+      classified: classifiedCount,
+      productProfiles: productProfilesCount,
+      avgConfidence: avgConfidence,
+    };
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    return {
+      exceptions: 0,
+      classified: 0,
+      productProfiles: 0,
+      avgConfidence: '0%',
+    };
+  }
+}
+
