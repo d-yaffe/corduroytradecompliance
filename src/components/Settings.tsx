@@ -431,9 +431,7 @@ export function Settings() {
                       onChange={(e) => setCompanyName(e.target.value)}
                       disabled={!isEditingCompany}
                       readOnly={!isEditingCompany}
-                      className={`w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        !isEditingCompany ? 'bg-slate-50 text-slate-600 cursor-not-allowed' : ''
-                      }`}
+                      className={`w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${!isEditingCompany ? 'bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
                       placeholder="Enter company name"
                       required
                     />
@@ -524,9 +522,7 @@ export function Settings() {
                         }}
                         disabled={!isEditingAutomation}
                         readOnly={!isEditingAutomation}
-                        className={`w-32 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                          !isEditingAutomation ? 'bg-slate-50 text-slate-600 cursor-not-allowed' : ''
-                        }`}
+                        className={`w-32 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${!isEditingAutomation ? 'bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
                         placeholder="80"
                       />
                       <span className="text-slate-700">%</span>
