@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Dashboard } from './components/Dashboard';
 import { UnifiedClassification } from './components/UnifiedClassification';
 import { ProductProfile } from './components/ProductProfile';
+import { Activity } from './components/Activity';
 import { Settings } from './components/Settings';
 import { LoginForm } from './components/auth/LoginForm';
 import { SignUpForm, SignUpData } from './components/auth/SignUpForm';
@@ -14,7 +15,7 @@ import logo from './assets/8dffc9a46764dc298d3dc392fb46f27f3eb8c7e5.png';
 import { supabase } from './lib/supabase';
 import { getUserMetadata, updateLastLogin, createOrUpdateUserMetadata } from './lib/userService';
 
-type View = 'dashboard' | 'classify' | 'profile' | 'settings';
+type View = 'dashboard' | 'classify' | 'profile' | 'settings' | 'activity';
 type AuthView = 'login' | 'signup' | 'reset-password' | 'new-password';
 
 interface UserData {
@@ -404,6 +405,7 @@ export default function App() {
         {currentView === 'dashboard' && <Dashboard onNavigate={setCurrentView} />}
         {currentView === 'classify' && <UnifiedClassification />}
         {currentView === 'profile' && <ProductProfile />}
+        {currentView === 'activity' && <Activity />}
         {currentView === 'settings' && <Settings />}
       </main>
     </div>

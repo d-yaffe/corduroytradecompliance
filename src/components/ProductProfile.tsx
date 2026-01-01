@@ -3,6 +3,8 @@ import { Plus, Search, MapPin, DollarSign, Package, FileText, Edit, Filter, X, C
 import { AddProductModal } from './AddProductModal';
 import { LLMAssistant } from './LLMAssistant';
 import { ProductDetailsModal } from './ProductDetailsModal';
+import { supabase } from '../lib/supabase';
+import { getProductProfiles } from '../lib/dashboardService';
 
 interface Product {
   id: number;
@@ -16,6 +18,12 @@ interface Product {
   confidence: number;
   lastUpdated: string;
   category: string;
+  // From database
+  tariffRate?: number | null;
+  tariffAmount?: number | null;
+  totalCost?: number | null;
+  alternateClassification?: string | null;
+  unitCost?: number | null;
 }
 
 export function ProductProfile() {
@@ -35,138 +43,32 @@ export function ProductProfile() {
   const [selectedDateRange, setSelectedDateRange] = useState<string>('all');
   const [selectedConfidence, setSelectedConfidence] = useState<string>('all');
   
-  const [products, setProducts] = useState<Product[]>([
-    {
-      id: 1,
-      name: 'Wireless Bluetooth Speaker',
-      sku: 'WBS-001',
-      hts: '8518.22.0000',
-      materials: 'ABS Plastic, Lithium Battery, Electronic Components',
-      origin: 'China',
-      cost: '$12.50',
-      vendor: 'TechSupply Co.',
-      confidence: 96,
-      lastUpdated: '2025-12-10',
-      category: 'Electronics'
-    },
-    {
-      id: 2,
-      name: 'Organic Cotton T-Shirt',
-      sku: 'OTS-202',
-      hts: '6109.10.0012',
-      materials: '100% Organic Cotton',
-      origin: 'India',
-      cost: '$4.25',
-      vendor: 'Global Textiles Ltd.',
-      confidence: 97,
-      lastUpdated: '2025-12-09',
-      category: 'Apparel'
-    },
-    {
-      id: 3,
-      name: 'LED Desk Lamp',
-      sku: 'LDL-345',
-      hts: '9405.20.6000',
-      materials: 'Aluminum, LED Components, Plastic Base',
-      origin: 'Vietnam',
-      cost: '$8.75',
-      vendor: 'Lighting Solutions Inc.',
-      confidence: 98,
-      lastUpdated: '2025-12-08',
-      category: 'Home & Kitchen'
-    },
-    {
-      id: 4,
-      name: 'Stainless Steel Water Bottle',
-      sku: 'SSB-789',
-      hts: '7323.93.0000',
-      materials: 'Stainless Steel 304, Silicone Seal',
-      origin: 'South Korea',
-      cost: '$6.30',
-      vendor: 'MetalWorks Asia',
-      confidence: 99,
-      lastUpdated: '2025-12-07',
-      category: 'Home & Kitchen'
-    },
-    {
-      id: 5,
-      name: 'Smart Watch with Health Monitor',
-      sku: 'SWH-2024',
-      hts: '9102.11.0000',
-      materials: 'Stainless Steel Case, Silicone Band, LCD Display, Sensors',
-      origin: 'China',
-      cost: '$45.00',
-      vendor: 'Tech Innovations Ltd.',
-      confidence: 94,
-      lastUpdated: '2025-12-06',
-      category: 'Electronics'
-    },
-    {
-      id: 6,
-      name: 'Protective Carrying Case',
-      sku: 'PCC-789',
-      hts: '4202.92.9026',
-      materials: 'EVA Foam, Nylon Outer Shell, Plastic Zipper',
-      origin: 'China',
-      cost: '$2.50',
-      vendor: 'PackPro Manufacturing',
-      confidence: 95,
-      lastUpdated: '2025-12-05',
-      category: 'Electronics'
-    },
-    {
-      id: 7,
-      name: 'Cotton-Polyester Blend Fabric',
-      sku: 'CPF-555',
-      hts: '5515.11.0000',
-      materials: '60% Cotton, 40% Polyester',
-      origin: 'India',
-      cost: '$3.20',
-      vendor: 'Textile World Co.',
-      confidence: 98,
-      lastUpdated: '2025-12-04',
-      category: 'Apparel'
-    },
-    {
-      id: 8,
-      name: 'Ceramic Coffee Mug',
-      sku: 'CCM-123',
-      hts: '6912.00.4810',
-      materials: 'Glazed Ceramic',
-      origin: 'Vietnam',
-      cost: '$1.85',
-      vendor: 'HomeGoods Asia',
-      confidence: 99,
-      lastUpdated: '2025-12-03',
-      category: 'Home & Kitchen'
-    },
-    {
-      id: 9,
-      name: 'Yoga Mat',
-      sku: 'YM-456',
-      hts: '9506.91.0080',
-      materials: 'TPE (Thermoplastic Elastomer)',
-      origin: 'Taiwan',
-      cost: '$8.50',
-      vendor: 'FitnessPro Supplies',
-      confidence: 97,
-      lastUpdated: '2025-12-02',
-      category: 'Sports & Fitness'
-    },
-    {
-      id: 10,
-      name: 'Bamboo Cutting Board',
-      sku: 'BCB-321',
-      hts: '4419.19.9050',
-      materials: '100% Bamboo',
-      origin: 'China',
-      cost: '$7.40',
-      vendor: 'EcoKitchen Imports',
-      confidence: 96,
-      lastUpdated: '2025-12-01',
-      category: 'Home & Kitchen'
-    }
-  ]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+
+  // Load products from database on mount
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        setIsLoadingProducts(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setIsLoadingProducts(false);
+          return;
+        }
+
+        const productProfiles = await getProductProfiles(user.id);
+        setProducts(productProfiles);
+        setIsLoadingProducts(false);
+      } catch (error) {
+        console.error('Error loading products:', error);
+        setIsLoadingProducts(false);
+      }
+    };
+
+    loadProducts();
+  }, []);
+
 
   // Extract unique values for filters
   const categories = Array.from(new Set(products.map(p => p.category)));
@@ -517,28 +419,34 @@ export function ProductProfile() {
               </div>
               
               <div className="divide-y divide-slate-200 max-h-[600px] overflow-y-auto">
-                {filteredProducts.map((product) => (
-                  <button
-                    key={product.id}
-                    onClick={() => handleProductClick(product)}
-                    className={`w-full p-4 text-left hover:bg-slate-50 transition-colors ${
-                      selectedProduct?.id === product.id ? 'bg-blue-50 border-l-4 border-l-blue-600' : ''
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <span className="text-slate-900">{product.name}</span>
-                      <span className={`px-2 py-0.5 rounded text-xs ${
-                        product.confidence >= 95 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                      }`}>
-                        {product.confidence}%
-                      </span>
-                    </div>
-                    <div className="text-slate-600 text-sm space-y-1">
-                      <div>SKU: {product.sku}</div>
-                      <div>HTS: {product.hts}</div>
-                    </div>
-                  </button>
-                ))}
+                {isLoadingProducts ? (
+                  <div className="p-8 text-center text-slate-500">Loading products...</div>
+                ) : filteredProducts.length === 0 ? (
+                  <div className="p-8 text-center text-slate-500">No approved products found</div>
+                ) : (
+                  filteredProducts.map((product) => (
+                    <button
+                      key={product.id}
+                      onClick={() => handleProductClick(product)}
+                      className={`w-full p-4 text-left hover:bg-slate-50 transition-colors ${
+                        selectedProduct?.id === product.id ? 'bg-blue-50 border-l-4 border-l-blue-600' : ''
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <span className="text-slate-900">{product.name}</span>
+                        <span className={`px-2 py-0.5 rounded text-xs ${
+                          product.confidence >= 95 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {product.confidence}%
+                        </span>
+                      </div>
+                      <div className="text-slate-600 text-sm space-y-1">
+                        <div>SKU: {product.sku}</div>
+                        <div>HTS: {product.hts}</div>
+                      </div>
+                    </button>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -572,6 +480,7 @@ export function ProductProfile() {
                   </div>
                   <div className="text-green-800 text-lg mb-3">HTS Code: {selectedProduct.hts}</div>
                   
+                  {/* HARDCODED: HTS Chapter/Heading/Subheading descriptions - No fields in DB for these descriptions */}
                   <div className="space-y-1 text-xs mb-3">
                     <div className="flex items-start gap-2">
                       <span className="text-green-700 min-w-[60px]">Chapter</span>
@@ -666,12 +575,36 @@ export function ProductProfile() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                       <span className="text-blue-900">Standard Tariff Rate (MFN)</span>
-                      <span className="text-blue-700">0% (Free)</span>
+                      <span className="text-blue-700">
+                        {selectedProduct.tariffRate !== null && selectedProduct.tariffRate !== undefined
+                          ? `${(selectedProduct.tariffRate * 100).toFixed(2)}%`
+                          : 'N/A'}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                      <span className="text-blue-900">Est. Cost Plus Tariff</span>
-                      <span className="text-blue-700">$14.20</span>
+                      <span className="text-blue-900">Tariff Amount</span>
+                      <span className="text-blue-700">
+                        {selectedProduct.tariffAmount !== null && selectedProduct.tariffAmount !== undefined
+                          ? `$${selectedProduct.tariffAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : 'N/A'}
+                      </span>
                     </div>
+                    <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                      <span className="text-blue-900">Total Cost (Unit Cost + Tariff)</span>
+                      <span className="text-blue-700">
+                        {selectedProduct.totalCost !== null && selectedProduct.totalCost !== undefined
+                          ? `$${selectedProduct.totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : selectedProduct.unitCost && selectedProduct.tariffAmount
+                          ? `$${(Number(selectedProduct.unitCost) + Number(selectedProduct.tariffAmount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : 'N/A'}
+                      </span>
+                    </div>
+                    {selectedProduct.alternateClassification && (
+                      <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
+                        <span className="text-amber-900">Alternate Classification</span>
+                        <span className="text-amber-700">{selectedProduct.alternateClassification}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -682,6 +615,7 @@ export function ProductProfile() {
                     <div className="flex items-center justify-between p-3 bg-slate-50 rounded">
                       <div>
                         <div className="text-slate-900">HTS {selectedProduct.hts}</div>
+                        {/* HARDCODED: "Classified by AI Agent" - No field in DB for classifier name/type */}
                         <div className="text-slate-600">Classified by AI Agent</div>
                       </div>
                       <div className="text-slate-600">{new Date(selectedProduct.lastUpdated).toLocaleDateString()}</div>

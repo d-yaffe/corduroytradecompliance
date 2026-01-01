@@ -44,6 +44,7 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                 <div className="text-green-900 text-sm mb-2">Current Classification</div>
                 <div className="text-green-800 text-lg mb-3">HTS Code: {product.hts}</div>
                 
+                {/* HARDCODED: HTS Chapter/Heading/Subheading descriptions - No fields in DB for these descriptions */}
                 <div className="space-y-1 text-xs mb-3">
                   <div className="flex items-start gap-2">
                     <span className="text-green-700 min-w-[60px]">Chapter</span>
@@ -148,12 +149,36 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
             <div className="space-y-2">
               <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
                 <span className="text-blue-900 text-sm">Standard Tariff Rate (MFN)</span>
-                <span className="text-blue-700">0% (Free)</span>
+                <span className="text-blue-700">
+                  {product.tariffRate !== null && product.tariffRate !== undefined
+                    ? `${(product.tariffRate * 100).toFixed(2)}%`
+                    : 'N/A'}
+                </span>
               </div>
               <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <span className="text-blue-900 text-sm">Est. Cost Plus Tariff</span>
-                <span className="text-blue-700">$14.20</span>
+                <span className="text-blue-900 text-sm">Tariff Amount</span>
+                <span className="text-blue-700">
+                  {product.tariffAmount !== null && product.tariffAmount !== undefined
+                    ? `$${product.tariffAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : 'N/A'}
+                </span>
               </div>
+              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <span className="text-blue-900 text-sm">Total Cost (Unit Cost + Tariff)</span>
+                <span className="text-blue-700">
+                  {product.totalCost !== null && product.totalCost !== undefined
+                    ? `$${product.totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : product.unitCost && product.tariffAmount
+                    ? `$${(Number(product.unitCost) + Number(product.tariffAmount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : 'N/A'}
+                </span>
+              </div>
+              {product.alternateClassification && (
+                <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
+                  <span className="text-amber-900 text-sm">Alternate Classification</span>
+                  <span className="text-amber-700">{product.alternateClassification}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -164,6 +189,7 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
                 <div>
                   <div className="text-slate-900 text-sm">HTS {product.hts}</div>
+                  {/* HARDCODED: "Classified by AI Agent" - No field in DB for classifier name/type */}
                   <div className="text-slate-600 text-xs">Classified by AI Agent • Confidence: {product.confidence}%</div>
                 </div>
                 <div className="text-slate-600 text-sm">{new Date(product.lastUpdated).toLocaleDateString()}</div>
@@ -171,6 +197,7 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
             </div>
           </div>
 
+          {/* HARDCODED: Full Classification Reasoning section - No fields in DB for classification reasoning text */}
           {/* Full Classification Reasoning - Always Visible */}
           <div className="border border-slate-200 rounded-xl overflow-hidden">
             <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-5 py-3 border-b border-indigo-100">
@@ -179,7 +206,7 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
             </div>
             
             <div className="p-5 space-y-5 bg-white">
-              {/* Classification Decision */}
+              {/* HARDCODED: Classification Decision reasoning text - No field in DB */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm">1</div>
@@ -205,7 +232,7 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                 </div>
               </div>
 
-              {/* General Rules of Interpretation */}
+              {/* HARDCODED: GRI rules text - No field in DB for GRI rules applied */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm">2</div>
@@ -233,7 +260,7 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                 </div>
               </div>
 
-              {/* Material Composition Analysis */}
+              {/* Material Composition Analysis - Uses product.materials from DB */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm">3</div>
@@ -241,13 +268,14 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                 </div>
                 <div className="ml-8 p-4 bg-slate-50 rounded-lg">
                   <p className="text-slate-700 text-sm mb-2"><strong>Declared Materials:</strong> {product.materials}</p>
+                  {/* HARDCODED: Material composition analysis text - No field in DB for analysis text */}
                   <p className="text-slate-600 text-sm">
                     Material composition has been verified to meet the requirements for classification under this HTS code. The predominant material determines the appropriate subheading according to Section Notes and Chapter Notes.
                   </p>
                 </div>
               </div>
 
-              {/* Country of Origin Impact */}
+              {/* Country of Origin Impact - Uses product.origin from DB */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm">4</div>
@@ -255,14 +283,20 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                 </div>
                 <div className="ml-8 p-4 bg-slate-50 rounded-lg">
                   <p className="text-slate-700 text-sm mb-2"><strong>Origin:</strong> {product.origin}</p>
+                  {/* HARDCODED: Country of origin impact text and tariff rate info - No field in DB for this analysis */}
                   <p className="text-slate-600 text-sm mb-3">
                     Country of origin affects duty rates and trade agreement eligibility. For products from {product.origin}, the following apply:
                   </p>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm">
                       <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
-                      <span className="text-slate-600">MFN (Most Favored Nation) tariff rate: 0%</span>
+                      <span className="text-slate-600">
+                        MFN (Most Favored Nation) tariff rate: {product.tariffRate !== null && product.tariffRate !== undefined
+                          ? `${(product.tariffRate * 100).toFixed(2)}%`
+                          : 'N/A'}
+                      </span>
                     </div>
+                    {/* HARDCODED: "Special tariff programs may apply" - No field in DB for special tariff program info */}
                     <div className="flex items-center gap-2 text-sm">
                       <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
                       <span className="text-slate-600">Special tariff programs may apply</span>
@@ -271,13 +305,14 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                 </div>
               </div>
 
-              {/* Alternative Classifications Considered */}
+              {/* HARDCODED: Alternative Classifications Considered - Uses alternate_classification from DB but reasoning text is hardcoded */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm">5</div>
                   <h4 className="text-slate-900">Alternative Classifications Considered</h4>
                 </div>
                 <div className="ml-8 space-y-2">
+                  {/* HARDCODED: Alternative classification reasoning - No field in DB for rejection reasons */}
                   <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
                     <p className="text-sm text-slate-700 mb-1"><strong>Alternative 1:</strong> HTS {product.hts.substring(0, 4)}.XX.XXXX</p>
                     <p className="text-xs text-slate-600">Rejected: Product characteristics do not match primary function requirements</p>
@@ -289,7 +324,7 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                 </div>
               </div>
 
-              {/* Supporting Documentation */}
+              {/* HARDCODED: Supporting Documentation list - No field in DB for document list */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm">6</div>
@@ -311,7 +346,7 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                 </div>
               </div>
 
-              {/* Compliance Notes */}
+              {/* HARDCODED: Compliance Notes text - No field in DB for compliance notes */}
               <div className="border-t border-slate-200 pt-4">
                 <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
                   <div className="flex items-start gap-2">

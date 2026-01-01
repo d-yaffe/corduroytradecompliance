@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { getExceptions, getRecentActivity, getDashboardStats } from '../lib/dashboardService';
 
 interface DashboardProps {
-  onNavigate: (view: 'dashboard' | 'classify' | 'bulk' | 'profile') => void;
+  onNavigate: (view: 'dashboard' | 'classify' | 'bulk' | 'profile' | 'activity') => void;
 }
 
 export function Dashboard({ onNavigate }: DashboardProps) {
@@ -304,7 +304,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                     <div 
                       key={idx} 
                       className="flex items-center gap-3 p-4 hover:bg-slate-50 transition-colors cursor-pointer group"
-                      onClick={() => onNavigate('profile')}
+                      onClick={() => onNavigate('activity')}
                     >
                       <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></div>
                       <div className="flex-1 min-w-0">
@@ -319,7 +319,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               </div>
               <div className="px-6 py-4 bg-slate-50 border-t border-slate-200">
                 <button 
-                  onClick={() => onNavigate('profile')}
+                  onClick={() => onNavigate('activity')}
                   className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-2"
                 >
                   View all activity

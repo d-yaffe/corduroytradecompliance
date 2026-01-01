@@ -338,11 +338,6 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
     };
     console.log('Dashboard stats:', stats);
     return stats;
-      exceptions: exceptionsCount,
-      classified: classifiedCount,
-      productProfiles: productProfilesCount,
-      avgConfidence: avgConfidence,
-    };
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);
     return {
@@ -351,6 +346,204 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
       productProfiles: 0,
       avgConfidence: '0%',
     };
+  }
+}
+
+export interface ProductProfile {
+  id: number;
+  name: string;
+  sku: string;
+  hts: string;
+  materials: string;
+  origin: string;
+  cost: string;
+  vendor: string;
+  confidence: number;
+  lastUpdated: string;
+  category: string;
+  // From database
+  tariffRate: number | null;
+  tariffAmount: number | null;
+  totalCost: number | null;
+  alternateClassification: string | null;
+  unitCost: number | null;
+}
+
+/**
+ * Fetch all approved product profiles for a user
+ * Only returns products that have been approved and saved as profiles
+ */
+export async function getProductProfiles(userId: string): Promise<ProductProfile[]> {
+  try {
+    // Get all product profiles for this user
+    const { data: profiles, error: profilesError } = await supabase
+      .from('user_product_profiles')
+      .select('id, product_id, classification_result_id, updated_at')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false });
+
+    if (profilesError) {
+      console.error('Error fetching product profiles:', profilesError);
+      return [];
+    }
+
+    if (!profiles || profiles.length === 0) {
+      return [];
+    }
+
+    // Get all classification result IDs from profiles
+    const classificationResultIds = profiles
+      .map(p => p.classification_result_id)
+      .filter(Boolean) as number[];
+
+    if (classificationResultIds.length === 0) {
+      return [];
+    }
+
+    // Verify these results are approved
+    const { data: approvedHistory, error: historyError } = await supabase
+      .from('user_product_classification_history')
+      .select('classification_result_id, approved')
+      .in('classification_result_id', classificationResultIds)
+      .eq('approved', true);
+
+    if (historyError) {
+      console.error('Error fetching approval history:', historyError);
+      return [];
+    }
+
+    if (!approvedHistory || approvedHistory.length === 0) {
+      return [];
+    }
+
+    // Create a set of approved result IDs
+    const approvedResultIds = new Set(
+      approvedHistory.map(h => h.classification_result_id)
+    );
+
+    // Filter profiles to only include approved ones
+    const approvedProfiles = profiles.filter(p => 
+      p.classification_result_id && approvedResultIds.has(p.classification_result_id)
+    );
+
+    if (approvedProfiles.length === 0) {
+      return [];
+    }
+
+    // Get all product IDs
+    const productIds = approvedProfiles.map(p => p.product_id).filter(Boolean) as number[];
+    const resultIds = approvedProfiles.map(p => p.classification_result_id).filter(Boolean) as number[];
+
+    // Fetch products and classification results in parallel
+    const [productsResponse, resultsResponse] = await Promise.all([
+      supabase
+        .from('user_products')
+        .select('id, product_name, product_description, country_of_origin, materials, vendor, unit_cost, updated_at')
+        .in('id', productIds)
+        .eq('user_id', userId),
+      supabase
+        .from('user_product_classification_results')
+        .select('id, hts_classification, alternate_classification, confidence, classified_at, tariff_rate, tariff_amount, total_cost, unit_cost')
+        .in('id', resultIds)
+    ]);
+
+    if (productsResponse.error) {
+      console.error('Error fetching products:', productsResponse.error);
+      return [];
+    }
+
+    if (resultsResponse.error) {
+      console.error('Error fetching classification results:', resultsResponse.error);
+      return [];
+    }
+
+    const products = productsResponse.data || [];
+    const results = resultsResponse.data || [];
+
+    // Create maps for quick lookup
+    const productMap = new Map(products.map(p => [p.id, p]));
+    const resultMap = new Map(results.map(r => [r.id, r]));
+
+    // Map to ProductProfile format
+    const productProfiles: ProductProfile[] = approvedProfiles
+      .map(profile => {
+        const product = productMap.get(profile.product_id);
+        const result = resultMap.get(profile.classification_result_id || 0);
+
+        if (!product || !result) {
+          return null;
+        }
+
+        // Format materials (handle JSONB)
+        let materialsStr = 'N/A';
+        if (product.materials) {
+          if (typeof product.materials === 'string') {
+            materialsStr = product.materials;
+          } else if (Array.isArray(product.materials)) {
+            materialsStr = product.materials.join(', ');
+          } else if (typeof product.materials === 'object') {
+            materialsStr = JSON.stringify(product.materials);
+          }
+        }
+
+        // Format cost - use unit_cost from product, fallback to result
+        const unitCostValue = product.unit_cost || result.unit_cost || null;
+        const cost = unitCostValue 
+          ? `$${Number(unitCostValue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          : 'N/A';
+
+        // Calculate confidence as percentage
+        const confidence = Math.round(((result.confidence as number) || 0) * 100);
+        
+        // Get tariff data from database
+        const tariffRate = result.tariff_rate ? Number(result.tariff_rate) : null;
+        const tariffAmount = result.tariff_amount ? Number(result.tariff_amount) : null;
+        const totalCost = result.total_cost ? Number(result.total_cost) : null;
+        const alternateClassification = result.alternate_classification || null;
+
+        // Determine category from HTS code (simplified - can be enhanced)
+        let category = 'Other';
+        const hts = (result.hts_classification as string) || '';
+        if (hts.startsWith('85')) category = 'Electrical';
+        else if (hts.startsWith('61')) category = 'Apparel';
+        else if (hts.startsWith('94')) category = 'Furniture';
+        else if (hts.startsWith('73')) category = 'Metal Products';
+        else if (hts.startsWith('42')) category = 'Leather Goods';
+        else if (hts.startsWith('91')) category = 'Timepieces';
+        else if (hts.startsWith('55')) category = 'Textiles';
+        else if (hts.startsWith('69')) category = 'Ceramics';
+        else if (hts.startsWith('95')) category = 'Toys & Games';
+        else if (hts.startsWith('44')) category = 'Wood Products';
+
+        // Use updated_at from profile, fallback to classified_at, then product updated_at
+        const lastUpdated = profile.updated_at || result.classified_at || product.updated_at || new Date().toISOString();
+
+        return {
+          id: profile.id, // Use profile ID
+          name: product.product_name || 'Unnamed Product',
+          sku: `PROD-${product.id}`,
+          hts: hts || 'N/A',
+          materials: materialsStr,
+          origin: product.country_of_origin || 'Unknown',
+          cost: cost,
+          vendor: product.vendor || 'N/A',
+          confidence: confidence,
+          lastUpdated: lastUpdated,
+          category: category,
+          // From database
+          tariffRate: tariffRate,
+          tariffAmount: tariffAmount,
+          totalCost: totalCost,
+          alternateClassification: alternateClassification,
+          unitCost: unitCostValue,
+        };
+      })
+      .filter((p): p is ProductProfile => p !== null);
+
+    return productProfiles;
+  } catch (error) {
+    console.error('Error fetching product profiles:', error);
+    return [];
   }
 }
 
