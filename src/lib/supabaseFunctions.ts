@@ -19,15 +19,29 @@ export async function callPythonProxy(
 
     if (error) {
       console.error('Supabase Edge Function error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        name: error.name,
+        context: error.context,
+        status: error.status,
+      });
       
-      // Provide more helpful error messages
-      if (error.message?.includes('Failed to send a request') || error.message?.includes('FunctionsFetchError')) {
+      // Only show "not deployed" message for actual function not found errors
+      // Check for specific error codes/messages that indicate function doesn't exist
+      const isFunctionNotFound = 
+        error.message?.includes('Function not found') ||
+        error.message?.includes('404') ||
+        (error.status === 404) ||
+        (error.name === 'FunctionsHttpError' && error.status === 404);
+      
+      if (isFunctionNotFound) {
         throw new Error(
           'Edge Function not found or not deployed. Please ensure the "python-proxy" edge function is deployed to your Supabase project. ' +
           'See: https://supabase.com/docs/guides/functions'
         );
       }
       
+      // For other errors, pass through the original error message
       throw error;
     }
 
@@ -49,7 +63,9 @@ export async function callPythonProxy(
       throw error;
     }
     
-    throw new Error(error.message || 'Failed to call Python backend. Please check that the edge function is deployed.');
+    // If the error has a message, use it; otherwise provide a generic one
+    const errorMessage = error.message || error.toString() || 'Failed to call Python backend';
+    throw new Error(errorMessage);
   }
 }
 
