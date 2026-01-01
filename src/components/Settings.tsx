@@ -28,16 +28,40 @@ export function Settings() {
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        console.log('Loading settings...');
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError) {
+          console.error('Error getting user:', userError);
+          setIsLoadingCompany(false);
+          setIsLoadingAutomation(false);
+          return;
+        }
+        
         if (user) {
+          console.log('Fetching metadata for user:', user.id);
           const metadata = await getUserMetadata(user.id);
+          
           if (metadata) {
+            console.log('Loaded metadata:', metadata);
             setCompanyName(metadata.company_name || '');
             setAutoApprovalThreshold((metadata.confidence_threshold || 0.8) * 100); // Convert from 0-1 to 0-100
+          } else {
+            console.log('No metadata found, using defaults');
+            // Use defaults if no metadata exists
+            setCompanyName('');
+            setAutoApprovalThreshold(80);
           }
+        } else {
+          console.log('No user found');
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error loading settings:', error);
+        console.error('Error details:', {
+          message: error?.message,
+          code: error?.code,
+          details: error?.details
+        });
       } finally {
         setIsLoadingCompany(false);
         setIsLoadingAutomation(false);

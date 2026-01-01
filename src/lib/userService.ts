@@ -19,17 +19,29 @@ export async function getUserMetadata(userId: string): Promise<UserMetadata | nu
       .from('user_metadata')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle(); // Use maybeSingle() instead of single() to handle no rows gracefully
 
     if (error) {
       console.error('Error fetching user metadata:', error);
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+      throw error; // Re-throw to let caller handle it
+    }
+
+    if (!data) {
+      console.log('No user_metadata found for user:', userId);
       return null;
     }
 
+    console.log('Successfully fetched user metadata:', data);
     return data;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching user metadata:', error);
-    return null;
+    throw error; // Re-throw to let caller handle it
   }
 }
 
@@ -69,10 +81,28 @@ export async function updateUserMetadata(
  */
 export async function updateLastLogin(userId: string): Promise<void> {
   try {
-    await supabase
+    const { error } = await supabase
       .from('user_metadata')
       .update({ last_login_at: new Date().toISOString() })
       .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error updating last login:', error);
+      // If record doesn't exist, create it
+      if (error.code === 'PGRST116' || error.message?.includes('no rows')) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await createOrUpdateUserMetadata(userId, user.email || '', undefined);
+          // Retry the update
+          await supabase
+            .from('user_metadata')
+            .update({ last_login_at: new Date().toISOString() })
+            .eq('user_id', userId);
+        }
+      }
+    } else {
+      console.log('Successfully updated last_login_at for user:', userId);
+    }
   } catch (error) {
     console.error('Error updating last login:', error);
   }

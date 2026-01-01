@@ -83,8 +83,20 @@ export default function App() {
 
   const loadUserData = async (supabaseUser: any) => {
     try {
+      console.log('Loading user data for:', supabaseUser.id, supabaseUser.email);
+      
       // Fetch user metadata from user_metadata table
-      const userMetadata = await getUserMetadata(supabaseUser.id);
+      let userMetadata = await getUserMetadata(supabaseUser.id);
+      
+      // If no metadata exists, create it
+      if (!userMetadata) {
+        console.log('No user_metadata found, creating new record...');
+        userMetadata = await createOrUpdateUserMetadata(
+          supabaseUser.id,
+          supabaseUser.email || '',
+          supabaseUser.user_metadata?.company
+        );
+      }
       
       // Update last login timestamp
       await updateLastLogin(supabaseUser.id);
@@ -92,7 +104,7 @@ export default function App() {
       // Extract profile info if available
       const profileInfo = userMetadata?.profile_info || {};
       
-      setUser({
+      const userData = {
         id: supabaseUser.id,
         email: userMetadata?.email || supabaseUser.email || '',
         firstName: profileInfo.first_name || profileInfo.firstName || supabaseUser.user_metadata?.first_name,
@@ -101,11 +113,18 @@ export default function App() {
         companyName: userMetadata?.company_name,
         confidenceThreshold: userMetadata?.confidence_threshold,
         hasCompletedOnboarding: profileInfo.has_completed_onboarding ?? true,
-      });
-
+      };
+      
+      console.log('Setting user data:', userData);
+      setUser(userData);
       setIsAuthenticated(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading user data:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details
+      });
       // Fallback to basic user data if metadata fetch fails
       setUser({
         id: supabaseUser.id,
