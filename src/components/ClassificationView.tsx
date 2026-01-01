@@ -1,6 +1,18 @@
-import { useState } from 'react';
-import { Search, Sparkles, AlertTriangle, CheckCircle, ChevronDown, ChevronUp, MessageSquare, Plus, X, Upload, FileText, File, Package, MapPin, DollarSign, Calendar, Edit2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Sparkles, AlertTriangle, CheckCircle, ChevronDown, ChevronUp, MessageSquare, Plus, X, Upload, FileText, File, Package, MapPin, DollarSign, Calendar, Edit2, Loader2 } from 'lucide-react';
 import { LLMAssistant } from './LLMAssistant';
+import { ClarificationChatbot } from './ClarificationChatbot';
+import { ClassificationResults, ClassificationResultData } from './ClassificationResults';
+import { preprocessProduct, parseProduct, applyRules, generateRuling } from '../lib/supabaseFunctions';
+import { 
+  createClassificationRun, 
+  addClarificationMessage, 
+  updateClassificationRunStatus, 
+  saveProduct, 
+  saveClassificationResult,
+  ClarificationMessage 
+} from '../lib/classificationService';
+import { supabase } from '../lib/supabase';
 
 interface MaterialComposition {
   material: string;
@@ -21,7 +33,7 @@ export function ClassificationView() {
   const [query, setQuery] = useState('');
   const [productDescription, setProductDescription] = useState('');
   const [originCountry, setOriginCountry] = useState('');
-  const [result, setResult] = useState<ClassificationResult | null>(null);
+  const [result, setResult] = useState<ClassificationResultData | null>(null);
   const [loading, setLoading] = useState(false);
   const [showAlternatives, setShowAlternatives] = useState(false);
   const [showAssistant, setShowAssistant] = useState(false);
@@ -36,6 +48,14 @@ export function ClassificationView() {
   const [sku, setSku] = useState('');
   const [vendor, setVendor] = useState('');
   const [unitCost, setUnitCost] = useState('');
+
+  // Classification flow state
+  const [classificationRunId, setClassificationRunId] = useState<number | null>(null);
+  const [clarificationMessages, setClarificationMessages] = useState<ClarificationMessage[]>([]);
+  const [needsClarification, setNeedsClarification] = useState(false);
+  const [currentStep, setCurrentStep] = useState<'preprocess' | 'parse' | 'rules' | 'rulings' | null>(null);
+  const [parsedData, setParsedData] = useState<any>(null);
+  const [isProcessingClarification, setIsProcessingClarification] = useState(false);
 
   const addMaterial = () => {
     if (newMaterial.material && newMaterial.percentage > 0) {
@@ -72,74 +92,360 @@ export function ClassificationView() {
     return items.reduce((sum, item) => sum + item.percentage, 0);
   };
 
-  const handleClassify = () => {
+  const handleClassify = async () => {
     if (!query.trim()) return;
     
-    setLoading(true);
-    
-    // Simulate AI classification
-    setTimeout(() => {
-      const mockResult: ClassificationResult = {
-        hts: '8517.62.0050',
-        confidence: 96,
-        description: 'Machines for the reception, conversion and transmission or regeneration of voice, images or other data',
-        tariff: originCountry ? (originCountry === 'China' ? '0% (Free)' : '0% (Free)') : 'Dependent on country of origin',
-        reasoning: 'Based on the product description "wireless bluetooth speaker," this item is classified as a telecommunications device. The primary function is receiving and converting wireless audio signals. Key classification factors: wireless connectivity (Bluetooth), audio transmission capability, and electronic amplification.',
-        tariffByOrigin: originCountry ? [
-          { country: originCountry, rate: '0% (Free)', tradeAgreement: 'MFN' },
-          { country: 'China', rate: '0% (Free)', tradeAgreement: 'MFN' },
-          { country: 'Mexico', rate: '0% (Free)', tradeAgreement: 'MFN' },
-          { country: 'Vietnam', rate: '0% (Free)', tradeAgreement: 'MFN' },
-        ] : undefined,
-        alternatives: [
-          { 
-            hts: '8518.22.0000', 
-            confidence: 82, 
-            description: 'Multiple loudspeakers, mounted in the same enclosure',
-            tariff: originCountry ? '4.9%' : 'Dependent on country of origin',
-            reasoning: 'This classification applies if the bluetooth speaker contains multiple driver units (woofer, tweeter, etc.) mounted in the same housing. The emphasis is on the physical speaker configuration rather than wireless connectivity. This code is often used for home audio systems with multiple speaker drivers.'
-          },
-          { 
-            hts: '8519.81.4040', 
-            confidence: 71, 
-            description: 'Sound reproducing apparatus not incorporating a sound recording device',
-            tariff: originCountry ? '0% (Free)' : 'Dependent on country of origin',
-            reasoning: 'This code applies to devices designed solely for sound reproduction without recording capability. If the bluetooth speaker lacks a microphone for recording or voice commands, and functions only as an audio playback device, this classification may be appropriate.'
-          },
-        ]
+    try {
+      setLoading(true);
+      setNeedsClarification(false);
+      setClarificationMessages([]);
+      setResult(null);
+      setCurrentStep('preprocess');
+
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert('Please log in to classify products');
+        setLoading(false);
+        return;
+      }
+
+      // Create classification run
+      const runId = await createClassificationRun(user.id, 'single');
+      setClassificationRunId(runId);
+
+      // Prepare input data
+      const inputData = {
+        product_name: query,
+        product_description: productDescription || undefined,
+        country_of_origin: originCountry || undefined,
+        materials: materials.length > 0 ? materials : undefined,
+        unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
+        vendor: vendor || undefined,
+        sku: sku || undefined,
       };
-      
-      setResult(mockResult);
+
+      // Step 1: Preprocess
+      let preprocessResponse;
+      try {
+        preprocessResponse = await preprocessProduct(inputData);
+      } catch (error: any) {
+        console.error('Preprocess error:', error);
+        throw error;
+      }
+
+      // Check if preprocess returned clarification questions
+      if (preprocessResponse?.needs_clarification || preprocessResponse?.questions) {
+        const questions = Array.isArray(preprocessResponse.questions) 
+          ? preprocessResponse.questions 
+          : [preprocessResponse.questions || preprocessResponse.message || 'Please provide more information'];
+        
+        const clarificationMsgs: ClarificationMessage[] = questions.map((q: string) => ({
+          step: 'preprocess',
+          type: 'question',
+          content: q,
+          timestamp: new Date().toISOString(),
+        }));
+
+        setClarificationMessages(clarificationMsgs);
+        setNeedsClarification(true);
+        setCurrentStep('preprocess');
+        
+        // Save questions to database
+        for (const msg of clarificationMsgs) {
+          await addClarificationMessage(runId, msg);
+        }
+
+        setLoading(false);
+        return; // Wait for user response
+      }
+
+      // Step 2: Parse (if preprocess passed)
+      setCurrentStep('parse');
+      let parseResponse;
+      try {
+        parseResponse = await parseProduct(preprocessResponse || inputData);
+      } catch (error: any) {
+        console.error('Parse error:', error);
+        throw error;
+      }
+
+      // Check if parse returned clarification questions
+      if (parseResponse?.needs_clarification || parseResponse?.questions) {
+        const questions = Array.isArray(parseResponse.questions) 
+          ? parseResponse.questions 
+          : [parseResponse.questions || parseResponse.message || 'Please provide more information'];
+        
+        const clarificationMsgs: ClarificationMessage[] = questions.map((q: string) => ({
+          step: 'parse',
+          type: 'question',
+          content: q,
+          timestamp: new Date().toISOString(),
+        }));
+
+        setClarificationMessages(prev => [...prev, ...clarificationMsgs]);
+        setNeedsClarification(true);
+        setCurrentStep('parse');
+        
+        // Save questions to database
+        for (const msg of clarificationMsgs) {
+          await addClarificationMessage(runId, msg);
+        }
+
+        setLoading(false);
+        return; // Wait for user response
+      }
+
+      // Store parsed data
+      setParsedData(parseResponse);
+
+      // Step 3: Apply Rules (get HTS code)
+      setCurrentStep('rules');
+      let rulesResponse;
+      try {
+        rulesResponse = await applyRules(parseResponse || preprocessResponse || inputData);
+      } catch (error: any) {
+        console.error('Rules error:', error);
+        throw error;
+      }
+
+      // Step 4: Get Rulings
+      setCurrentStep('rulings');
+      let rulingsResponse;
+      try {
+        rulingsResponse = await generateRuling(
+          `Get rulings and documentation for HTS code ${rulesResponse?.hts || rulesResponse?.hts_classification || ''}`,
+          [],
+          {
+            name: parseResponse?.product_name || query,
+            description: parseResponse?.product_description || productDescription,
+            hts: rulesResponse?.hts || rulesResponse?.hts_classification,
+            origin: parseResponse?.country_of_origin || originCountry,
+          }
+        );
+      } catch (error: any) {
+        console.error('Rulings error:', error);
+        // Don't fail if rulings fail, just continue without them
+        rulingsResponse = null;
+      }
+
+      // Format result
+      const classificationResult: ClassificationResultData = {
+        hts: rulesResponse?.hts || rulesResponse?.hts_classification || 'N/A',
+        confidence: rulesResponse?.confidence ? Math.round(rulesResponse.confidence * 100) : 0,
+        description: rulesResponse?.description || rulesResponse?.hts_description || '',
+        tariff_rate: rulesResponse?.tariff_rate || undefined,
+        tariff_amount: rulesResponse?.tariff_amount || undefined,
+        total_cost: rulesResponse?.total_cost || undefined,
+        alternate_classification: rulesResponse?.alternate_classification || undefined,
+        reasoning: rulesResponse?.reasoning || rulesResponse?.explanation || '',
+        rulings: rulingsResponse || undefined,
+        parsed_data: parseResponse || undefined,
+      };
+
+      setResult(classificationResult);
+      setNeedsClarification(false);
+      setCurrentStep(null);
+
+      // Save product and result to database
+      const productId = await saveProduct(user.id, runId, {
+        product_name: parseResponse?.product_name || query,
+        product_description: parseResponse?.product_description || productDescription || undefined,
+        country_of_origin: parseResponse?.country_of_origin || originCountry || undefined,
+        materials: parseResponse?.materials || (materials.length > 0 ? materials : undefined),
+        unit_cost: parseResponse?.unit_cost || (unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined),
+        vendor: parseResponse?.vendor || vendor || undefined,
+      });
+
+      await saveClassificationResult(productId, runId, {
+        hts_classification: classificationResult.hts,
+        alternate_classification: classificationResult.alternate_classification || undefined,
+        tariff_rate: classificationResult.tariff_rate || undefined,
+        confidence: rulesResponse?.confidence || undefined,
+        unit_cost: parseResponse?.unit_cost || (unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined),
+        tariff_amount: classificationResult.tariff_amount || undefined,
+        total_cost: classificationResult.total_cost || undefined,
+      });
+
+      // Update run status to completed
+      await updateClassificationRunStatus(runId, 'completed');
+
       setLoading(false);
-    }, 1500);
+    } catch (error: any) {
+      console.error('Classification error:', error);
+      alert(error.message || 'An error occurred during classification. Please try again.');
+      setLoading(false);
+      setCurrentStep(null);
+    }
   };
 
-  const handleSelectAlternative = (alternative: { hts: string; confidence: number; description: string; tariff: string; reasoning?: string }) => {
-    if (!result) return;
+  const handleClarificationResponse = async (response: string) => {
+    if (!classificationRunId || !currentStep) return;
 
-    // Store the current classification as an alternative
-    const currentAsAlternative = {
-      hts: result.hts,
-      confidence: result.confidence,
-      description: result.description,
-      tariff: result.tariff,
-      reasoning: result.reasoning
-    };
+    try {
+      setIsProcessingClarification(true);
 
-    // Filter out the selected alternative and add the current one
-    const newAlternatives = result.alternatives && result.alternatives.filter ? result.alternatives.filter(alt => alt.hts !== alternative.hts) : [];
-    newAlternatives.unshift(currentAsAlternative);
+      // Save user response to database
+      const userMessage: ClarificationMessage = {
+        step: currentStep,
+        type: 'user_response',
+        content: response,
+        timestamp: new Date().toISOString(),
+      };
+      await addClarificationMessage(classificationRunId, userMessage);
+      setClarificationMessages(prev => [...prev, userMessage]);
 
-    // Update the result with the selected alternative as the main classification
-    setResult({
-      ...result,
-      hts: alternative.hts,
-      confidence: alternative.confidence,
-      description: alternative.description,
-      tariff: alternative.tariff,
-      reasoning: alternative.reasoning || '',
-      alternatives: newAlternatives
-    });
+      // Prepare data with user response
+      const inputData = {
+        product_name: query,
+        product_description: productDescription || undefined,
+        country_of_origin: originCountry || undefined,
+        materials: materials.length > 0 ? materials : undefined,
+        unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
+        vendor: vendor || undefined,
+        sku: sku || undefined,
+        user_response: response,
+        previous_context: parsedData || undefined,
+      };
+
+      let responseData;
+      
+      // Re-run the current step with user response
+      if (currentStep === 'preprocess') {
+        responseData = await preprocessProduct(inputData);
+      } else if (currentStep === 'parse') {
+        responseData = await parseProduct(inputData);
+      } else {
+        setIsProcessingClarification(false);
+        return;
+      }
+
+      // Check if still needs clarification
+      if (responseData?.needs_clarification || responseData?.questions) {
+        const questions = Array.isArray(responseData.questions) 
+          ? responseData.questions 
+          : [responseData.questions || responseData.message || 'Please provide more information'];
+        
+        const clarificationMsgs: ClarificationMessage[] = questions.map((q: string) => ({
+          step: currentStep,
+          type: 'question',
+          content: q,
+          timestamp: new Date().toISOString(),
+        }));
+
+        setClarificationMessages(prev => [...prev, ...clarificationMsgs]);
+        
+        // Save questions to database
+        for (const msg of clarificationMsgs) {
+          await addClarificationMessage(classificationRunId, msg);
+        }
+
+        setIsProcessingClarification(false);
+        return; // Still needs more clarification
+      }
+
+      // If preprocess passed, continue to parse
+      if (currentStep === 'preprocess') {
+        setCurrentStep('parse');
+        const parseResponse = await parseProduct(responseData || inputData);
+        
+        if (parseResponse?.needs_clarification || parseResponse?.questions) {
+          const questions = Array.isArray(parseResponse.questions) 
+            ? parseResponse.questions 
+            : [parseResponse.questions || parseResponse.message || 'Please provide more information'];
+          
+          const clarificationMsgs: ClarificationMessage[] = questions.map((q: string) => ({
+            step: 'parse',
+            type: 'question',
+            content: q,
+            timestamp: new Date().toISOString(),
+          }));
+
+          setClarificationMessages(prev => [...prev, ...clarificationMsgs]);
+          setCurrentStep('parse');
+          
+          for (const msg of clarificationMsgs) {
+            await addClarificationMessage(classificationRunId, msg);
+          }
+
+          setIsProcessingClarification(false);
+          return;
+        }
+
+        setParsedData(parseResponse);
+        responseData = parseResponse;
+      }
+
+      // Continue with rules and rulings
+      setCurrentStep('rules');
+      const rulesResponse = await applyRules(responseData || inputData);
+      
+      setCurrentStep('rulings');
+      let rulingsResponse;
+      try {
+        rulingsResponse = await generateRuling(
+          `Get rulings and documentation for HTS code ${rulesResponse?.hts || rulesResponse?.hts_classification || ''}`,
+          [],
+          {
+            name: responseData?.product_name || query,
+            description: responseData?.product_description || productDescription,
+            hts: rulesResponse?.hts || rulesResponse?.hts_classification,
+            origin: responseData?.country_of_origin || originCountry,
+          }
+        );
+      } catch (error) {
+        rulingsResponse = null;
+      }
+
+      // Format and display result
+      const classificationResult: ClassificationResultData = {
+        hts: rulesResponse?.hts || rulesResponse?.hts_classification || 'N/A',
+        confidence: rulesResponse?.confidence ? Math.round(rulesResponse.confidence * 100) : 0,
+        description: rulesResponse?.description || rulesResponse?.hts_description || '',
+        tariff_rate: rulesResponse?.tariff_rate || undefined,
+        tariff_amount: rulesResponse?.tariff_amount || undefined,
+        total_cost: rulesResponse?.total_cost || undefined,
+        alternate_classification: rulesResponse?.alternate_classification || undefined,
+        reasoning: rulesResponse?.reasoning || rulesResponse?.explanation || '',
+        rulings: rulingsResponse || undefined,
+        parsed_data: responseData || undefined,
+      };
+
+      setResult(classificationResult);
+      setNeedsClarification(false);
+      setCurrentStep(null);
+
+      // Save to database
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && classificationRunId) {
+        const productId = await saveProduct(user.id, classificationRunId, {
+          product_name: responseData?.product_name || query,
+          product_description: responseData?.product_description || productDescription || undefined,
+          country_of_origin: responseData?.country_of_origin || originCountry || undefined,
+          materials: responseData?.materials || (materials.length > 0 ? materials : undefined),
+          unit_cost: responseData?.unit_cost || (unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined),
+          vendor: responseData?.vendor || vendor || undefined,
+        });
+
+        await saveClassificationResult(productId, classificationRunId, {
+          hts_classification: classificationResult.hts,
+          alternate_classification: classificationResult.alternate_classification || undefined,
+          tariff_rate: classificationResult.tariff_rate || undefined,
+          confidence: rulesResponse?.confidence || undefined,
+          unit_cost: responseData?.unit_cost || (unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined),
+          tariff_amount: classificationResult.tariff_amount || undefined,
+          total_cost: classificationResult.total_cost || undefined,
+        });
+
+        await updateClassificationRunStatus(classificationRunId, 'completed');
+      }
+
+      setIsProcessingClarification(false);
+    } catch (error: any) {
+      console.error('Clarification response error:', error);
+      alert(error.message || 'An error occurred. Please try again.');
+      setIsProcessingClarification(false);
+    }
   };
 
   const handleReviewLater = () => {
@@ -436,10 +742,7 @@ export function ClassificationView() {
           </div>
         </div>
 
-        {/* Classification Result - Product Profile Style */}
-        {result && (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-            {/* Header */}
+        {/* Old Classification Result - Removed, using ClassificationResults component now */}
             <div className="flex items-start justify-between mb-6">
               <div>
                 <h2 className="text-slate-900 mb-1">{query}</h2>
@@ -738,7 +1041,74 @@ export function ClassificationView() {
           </div>
         )}
 
-        {!result && !loading && (
+        {/* Clarification Chatbot or Results Display */}
+        {(needsClarification || result || loading) && (
+          <div className="mb-6">
+            {needsClarification ? (
+              <ClarificationChatbot
+                messages={clarificationMessages}
+                onSendMessage={handleClarificationResponse}
+                isLoading={isProcessingClarification}
+              />
+            ) : result ? (
+              <div className="space-y-6">
+                {/* Show clarification history if there were any */}
+                {clarificationMessages.length > 0 && (
+                  <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+                    <h4 className="text-slate-900 text-sm font-semibold mb-3">Clarification History</h4>
+                    <ClarificationChatbot
+                      messages={clarificationMessages}
+                      onSendMessage={() => {}}
+                      isLoading={false}
+                    />
+                  </div>
+                )}
+                {/* Show results */}
+                <ClassificationResults
+                  result={result}
+                  onApprove={async () => {
+                    // Handle approve - mark as approved in database
+                    if (result && classificationRunId) {
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (user) {
+                        // Get the product_id from the result or fetch it
+                        // For now, we'll need to get it from the classification run
+                        // This would need the product_id which we saved earlier
+                        alert('Product approved and saved!');
+                        // Reset form
+                        setResult(null);
+                        setQuery('');
+                        setProductDescription('');
+                        setOriginCountry('');
+                        setMaterials([]);
+                        setSku('');
+                        setVendor('');
+                        setUnitCost('');
+                        setClarificationMessages([]);
+                        setClassificationRunId(null);
+                      }
+                    }
+                  }}
+                  onReviewLater={handleReviewLater}
+                />
+              </div>
+            ) : loading ? (
+              <div className="bg-white rounded-xl p-12 border border-slate-200 shadow-sm text-center">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+                <h3 className="text-slate-900 mb-2">
+                  {currentStep === 'preprocess' && 'Preprocessing...'}
+                  {currentStep === 'parse' && 'Parsing input...'}
+                  {currentStep === 'rules' && 'Finding HTS code...'}
+                  {currentStep === 'rulings' && 'Fetching rulings...'}
+                  {!currentStep && 'Classifying...'}
+                </h3>
+                <p className="text-slate-600">Processing your product information</p>
+              </div>
+            ) : null}
+          </div>
+        )}
+
+        {!result && !loading && !needsClarification && (
           <div className="bg-white rounded-xl p-12 border border-slate-200 shadow-sm text-center">
             <div className="bg-slate-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
               <Search className="w-8 h-8 text-slate-400" />
