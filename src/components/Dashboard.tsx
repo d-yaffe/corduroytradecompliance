@@ -42,6 +42,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
         // Load stats
         const dashboardStats = await getDashboardStats(user.id);
+        console.log('Loaded dashboard stats:', dashboardStats);
         setStats([
           { label: 'Exceptions', value: dashboardStats.exceptions.toString(), subtext: 'Need Review', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
           { label: 'Classified', value: dashboardStats.classified.toLocaleString(), subtext: 'This Month', icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },

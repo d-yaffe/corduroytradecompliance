@@ -247,22 +247,25 @@ export interface DashboardStats {
  */
 export async function getDashboardStats(userId: string): Promise<DashboardStats> {
   try {
+    console.log('Fetching dashboard stats for user:', userId);
     // 1. Exceptions: All products that have not been approved by user
     const exceptions = await getExceptions(userId);
     const exceptionsCount = exceptions.length;
+    console.log('Exceptions count:', exceptionsCount);
 
     // 2. Classified: All classification runs by user in the last 1 month
     const oneMonthAgo = new Date();
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
     
-    const { data: runs, error: runsError } = await supabase
+    const { data: runs, count, error: runsError } = await supabase
       .from('classification_runs')
-      .select('id', { count: 'exact' })
+      .select('id', { count: 'exact', head: false })
       .eq('user_id', userId)
       .eq('status', 'completed')
       .gte('created_at', oneMonthAgo.toISOString());
 
-    const classifiedCount = runsError ? 0 : (runs?.length || 0);
+    const classifiedCount = runsError ? 0 : (count || runs?.length || 0);
+    console.log('Classified runs count:', classifiedCount, 'runs:', runs?.length, 'count:', count);
 
     // 3. Product Profiles: All products approved by user in total history
     // Get all approved classification result IDs
@@ -306,6 +309,7 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
       .in('id', approvedProductIds);
 
     const productProfilesCount = productsError ? 0 : (userProducts?.length || 0);
+    console.log('Product profiles count:', productProfilesCount);
 
     // 4. Average Confidence: Average confidence level for all approved products in history
     // Filter approved results by user's products
@@ -324,8 +328,16 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
         avgConfidence = `${avg.toFixed(1)}%`;
       }
     }
+    console.log('Average confidence:', avgConfidence);
 
-    return {
+    const stats = {
+      exceptions: exceptionsCount,
+      classified: classifiedCount,
+      productProfiles: productProfilesCount,
+      avgConfidence: avgConfidence,
+    };
+    console.log('Dashboard stats:', stats);
+    return stats;
       exceptions: exceptionsCount,
       classified: classifiedCount,
       productProfiles: productProfilesCount,
