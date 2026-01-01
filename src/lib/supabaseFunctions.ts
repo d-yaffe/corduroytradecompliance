@@ -84,3 +84,4 @@ export async function applyRules(data: any): Promise<any> {
   return callPythonProxy('rules', data);
 }
 
+
