@@ -16,6 +16,7 @@ export interface ExceptionItem {
   product_id: number;
   classification_result_id: number;
   confidence: number;
+  tariff_rate?: number;
 }
 
 export interface RecentActivity {
@@ -61,7 +62,7 @@ export async function getExceptions(userId: string): Promise<ExceptionItem[]> {
     // Then get classification results for these products
     const { data: results, error } = await supabase
       .from('user_product_classification_results')
-      .select('id, confidence, hts_classification, product_id, classification_run_id, classified_at')
+      .select('id, confidence, hts_classification, product_id, classification_run_id, classified_at, tariff_rate')
       .in('product_id', productIds)
       .lt('confidence', threshold)
       .order('classified_at', { ascending: false });
@@ -117,7 +118,7 @@ export async function getExceptions(userId: string): Promise<ExceptionItem[]> {
 
         // Format value
         const value = product.unit_cost 
-          ? `$${parseFloat(product.unit_cost).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          ? `$${Number(product.unit_cost).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
           : 'N/A';
 
         return {
@@ -135,6 +136,7 @@ export async function getExceptions(userId: string): Promise<ExceptionItem[]> {
           product_id: product.id,
           classification_result_id: result.id,
           confidence: result.confidence,
+          tariff_rate: result.tariff_rate,
         };
       })
       .filter((e): e is ExceptionItem => e !== null);
@@ -154,21 +156,7 @@ export async function getRecentActivity(userId: string): Promise<RecentActivity[
     // Get latest 3 classification runs
     const { data: runs, error } = await supabase
       .from('classification_runs')
-      .select(`
-        id,
-        created_at,
-        status,
-        run_type,
-        user_product_classification_results (
-          id,
-          hts_classification,
-          confidence,
-          user_products!inner (
-            product_name,
-            user_id
-          )
-        )
-      `)
+      .select('id, created_at, status, run_type')
       .eq('user_id', userId)
       .eq('status', 'completed')
       .order('created_at', { ascending: false })

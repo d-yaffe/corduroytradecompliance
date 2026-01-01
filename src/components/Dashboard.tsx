@@ -401,8 +401,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             productName: selectedException.product,
             description: selectedException.description,
             hts: selectedException.hts,
-            confidence: 67,
-            tariff: '9.8%',
+            confidence: Math.round((selectedException.confidence || 0) * 100),
+            tariff: selectedException.tariff_rate ? `${(selectedException.tariff_rate * 100).toFixed(1)}%` : 'N/A',
             origin: selectedException.origin,
             reason: selectedException.reason
           }}
