@@ -1,6 +1,8 @@
 import { AlertCircle, CheckCircle, Clock, TrendingUp, MessageSquare, Sparkles, ChevronRight, Package, FileText, X, Upload, Database, BarChart, Search, Plus, ArrowLeft } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ExceptionReview } from './ExceptionReview';
+import { supabase } from '../lib/supabase';
+import { getExceptions, getRecentActivity } from '../lib/dashboardService';
 
 interface DashboardProps {
   onNavigate: (view: 'dashboard' | 'classify' | 'bulk' | 'profile') => void;
@@ -15,64 +17,51 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const [resolvedItems, setResolvedItems] = useState<any[]>([]);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [lastResolvedItem, setLastResolvedItem] = useState<any>(null);
-  const [activeExceptions, setActiveExceptions] = useState<any[]>([
-    { 
-      id: 1, 
-      product: 'Smart Watch with Health Monitor',
-      sku: 'SWH-2024', 
-      reason: 'Low confidence (68%)', 
-      hts: '9102.11.0000', 
-      status: 'urgent',
-      origin: 'China', 
-      value: '$11,250',
-      description: 'Fitness tracking, heart rate, GPS',
-      priority: 'high',
-      category: 'lowConfidence'
-    },
-    { 
-      id: 2, 
-      product: 'Wireless Bluetooth Speaker',
-      sku: 'WBS-001', 
-      reason: 'Missing origin documentation', 
-      hts: '8518.22.0000', 
-      status: 'review',
-      origin: 'China', 
-      value: '$6,250',
-      description: 'Portable speaker with rechargeable battery',
-      priority: 'medium',
-      category: 'missingDoc'
-    },
-    { 
-      id: 3, 
-      product: 'Cotton-Polyester Blend Fabric',
-      sku: 'CPF-555', 
-      reason: 'Multiple HTS alternatives', 
-      hts: '5515.11.0000', 
-      status: 'review',
-      origin: 'India', 
-      value: '$8,940',
-      description: '60% cotton, 40% polyester blend',
-      priority: 'medium',
-      category: 'multipleHTS'
-    },
-    {
-      id: 4,
-      product: 'Protective Carrying Case',
-      sku: 'PCC-789',
-      reason: 'Material composition unclear',
-      hts: '4202.92.9026',
-      status: 'review',
-      origin: 'China',
-      value: '$1,875',
-      description: 'EVA material protective case',
-      priority: 'low',
-      category: 'materialIssues'
-    }
-  ]);
-  const [aiMessages, setAiMessages] = useState([
-    { role: 'assistant', text: "Hi! I noticed you have 4 exceptions requiring review. Would you like me to help you resolve them?" }
-  ]);
+  const [activeExceptions, setActiveExceptions] = useState<any[]>([]);
+  const [isLoadingExceptions, setIsLoadingExceptions] = useState(true);
+  const [aiMessages, setAiMessages] = useState<any[]>([]);
   const [aiInput, setAiInput] = useState('');
+
+  // Load data from database on mount
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        setIsLoadingExceptions(true);
+        setIsLoadingRecentActivity(true);
+
+        // Load exceptions
+        const exceptions = await getExceptions(user.id);
+        setActiveExceptions(exceptions);
+
+        // Update AI message based on exception count
+        if (exceptions.length > 0) {
+          setAiMessages([
+            { role: 'assistant', text: `Hi! I noticed you have ${exceptions.length} exception${exceptions.length > 1 ? 's' : ''} requiring review. Would you like me to help you resolve them?` }
+          ]);
+        } else {
+          setAiMessages([
+            { role: 'assistant', text: "Hi! You're all caught up - no exceptions requiring review at the moment." }
+          ]);
+        }
+
+        // Load recent activity
+        const recentActivity = await getRecentActivity(user.id);
+        setRecentClassifications(recentActivity);
+
+        setIsLoadingExceptions(false);
+        setIsLoadingRecentActivity(false);
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        setIsLoadingExceptions(false);
+        setIsLoadingRecentActivity(false);
+      }
+    };
+
+    loadDashboardData();
+  }, []);
 
   const stats = [
     { label: 'Exceptions', value: activeExceptions.length.toString(), subtext: 'Need Review', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
@@ -81,11 +70,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     { label: 'Avg Confidence', value: '97.2%', subtext: 'Last 30 Days', icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' },
   ];
 
-  const recentClassifications = [
-    { product: 'LED Desk Lamp', hts: '9405.20.4000', confidence: '98%', time: '2 hours ago', status: 'auto-approved' },
-    { product: 'Wireless Speaker', hts: '8518.22.0000', confidence: '94%', time: '3 hours ago', status: 'auto-approved' },
-    { product: 'Cotton T-Shirt', hts: '6109.10.0012', confidence: '96%', time: '5 hours ago', status: 'auto-approved' },
-  ];
+  const [recentClassifications, setRecentClassifications] = useState<any[]>([]);
+  const [isLoadingRecentActivity, setIsLoadingRecentActivity] = useState(true);
 
   const recentProfiles = [
     { name: 'Bluetooth Audio Series', products: 12, updated: '1 day ago' },
@@ -189,8 +175,13 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               </div>
 
               <div className="divide-y divide-slate-100">
-                {activeExceptions
-                  .filter(item => filterBy === 'all' || item.priority === filterBy)
+                {isLoadingExceptions ? (
+                  <div className="p-5 text-center text-slate-500">Loading exceptions...</div>
+                ) : activeExceptions.length === 0 ? (
+                  <div className="p-5 text-center text-slate-500">No exceptions requiring review</div>
+                ) : (
+                  activeExceptions
+                  .filter(item => filterBy === 'all' || item.category === filterBy)
                   .sort((a, b) => {
                     if (sortBy === 'priority') {
                       return a.priority.localeCompare(b.priority);
@@ -287,21 +278,27 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                     ))}
                   </>
                 )}
-                {recentClassifications.map((activity, idx) => (
-                  <div 
-                    key={idx} 
-                    className="flex items-center gap-3 p-4 hover:bg-slate-50 transition-colors cursor-pointer group"
-                    onClick={() => onNavigate('profile')}
-                  >
-                    <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-slate-900 text-sm">{activity.product}</div>
-                      <div className="text-slate-500 text-xs">HTS: {activity.hts} • Confidence: {activity.confidence}</div>
+                {isLoadingRecentActivity ? (
+                  <div className="p-4 text-center text-slate-500">Loading recent activity...</div>
+                ) : recentClassifications.length === 0 ? (
+                  <div className="p-4 text-center text-slate-500">No recent activity</div>
+                ) : (
+                  recentClassifications.map((activity, idx) => (
+                    <div 
+                      key={idx} 
+                      className="flex items-center gap-3 p-4 hover:bg-slate-50 transition-colors cursor-pointer group"
+                      onClick={() => onNavigate('profile')}
+                    >
+                      <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-slate-900 text-sm">{activity.product}</div>
+                        <div className="text-slate-500 text-xs">HTS: {activity.hts} • Confidence: {activity.confidence}</div>
+                      </div>
+                      <div className="text-slate-400 text-xs whitespace-nowrap">{activity.time}</div>
+                      <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
-                    <div className="text-slate-400 text-xs whitespace-nowrap">{activity.time}</div>
-                    <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
               <div className="px-6 py-4 bg-slate-50 border-t border-slate-200">
                 <button 
