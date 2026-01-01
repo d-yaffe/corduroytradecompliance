@@ -186,7 +186,11 @@ export async function getRecentActivity(userId: string): Promise<RecentActivity[
         continue;
       }
 
-      const firstResult = results[0];
+      const firstResult = results[0] as { id: number; hts_classification: string | null; confidence: number | null; product_id: number };
+      
+      if (!firstResult || !firstResult.product_id) {
+        continue;
+      }
       
       // Get product details
       const { data: product, error: productError } = await supabase
@@ -200,7 +204,7 @@ export async function getRecentActivity(userId: string): Promise<RecentActivity[
         continue;
       }
 
-      const confidencePercent = Math.round((firstResult.confidence || 0) * 100);
+      const confidencePercent = Math.round(((firstResult.confidence as number) || 0) * 100);
       const runDate = new Date(run.created_at);
       const now = new Date();
       const hoursAgo = Math.floor((now.getTime() - runDate.getTime()) / (1000 * 60 * 60));
@@ -217,7 +221,7 @@ export async function getRecentActivity(userId: string): Promise<RecentActivity[
 
       activities.push({
         product: product.product_name || 'Unnamed Product',
-        hts: firstResult.hts_classification || 'N/A',
+        hts: (firstResult.hts_classification as string) || 'N/A',
         confidence: `${confidencePercent}%`,
         time: timeStr,
         status: 'auto-approved',
