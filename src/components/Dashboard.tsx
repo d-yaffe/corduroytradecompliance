@@ -256,7 +256,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                         </div>
                       </div>
                     </div>
-                  ))}
+                  ))
+                )}
               </div>
 
               <div className="px-6 py-4 bg-slate-50 border-t border-slate-200">
