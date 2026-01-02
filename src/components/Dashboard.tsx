@@ -40,8 +40,13 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         setIsLoadingRecentActivity(true);
         setIsLoadingStats(true);
 
-        // Load stats
-        const dashboardStats = await getDashboardStats(user.id);
+        // Load all data in parallel for better performance
+        const [dashboardStats, exceptions, recentActivity] = await Promise.all([
+          getDashboardStats(user.id),
+          getExceptions(user.id),
+          getRecentActivity(user.id),
+        ]);
+
         console.log('Loaded dashboard stats:', dashboardStats);
         setStats([
           { label: 'Exceptions', value: dashboardStats.exceptions.toString(), subtext: 'Need Review', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
@@ -50,8 +55,6 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           { label: 'Avg Confidence', value: dashboardStats.avgConfidence, subtext: 'Approved Products', icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' },
         ]);
 
-        // Load exceptions
-        const exceptions = await getExceptions(user.id);
         setActiveExceptions(exceptions);
 
         // Update AI message based on exception count
@@ -65,8 +68,6 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           ]);
         }
 
-        // Load recent activity
-        const recentActivity = await getRecentActivity(user.id);
         setRecentClassifications(recentActivity);
 
         setIsLoadingExceptions(false);

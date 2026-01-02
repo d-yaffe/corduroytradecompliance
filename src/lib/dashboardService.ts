@@ -29,80 +29,73 @@ export interface RecentActivity {
 
 /**
  * Fetch exceptions (products with confidence < threshold and not approved)
+ * OPTIMIZED: Runs queries in parallel instead of sequentially
  */
 export async function getExceptions(userId: string): Promise<ExceptionItem[]> {
   try {
-    // First get user's confidence threshold
+    // Get user's confidence threshold
     const userMetadata = await getUserMetadata(userId);
     if (!userMetadata) {
-      console.log('No user metadata found');
       return [];
     }
 
     const threshold = userMetadata.confidence_threshold || 0.8;
 
-    // Query classification results with product details
-    // First get all products for this user
+    // OPTIMIZED: Get results with product data in fewer queries
+    // First get product IDs for this user
     const { data: userProducts, error: productsError } = await supabase
       .from('user_products')
-      .select('id, product_name, product_description, country_of_origin, unit_cost')
-      .eq('user_id', userId);
+      .select('id')
+      .eq('user_id', userId)
+      .limit(1000); // Reasonable limit
 
-    if (productsError) {
-      console.error('Error fetching user products:', productsError);
-      return [];
-    }
-
-    if (!userProducts || userProducts.length === 0) {
+    if (productsError || !userProducts || userProducts.length === 0) {
       return [];
     }
 
     const productIds = userProducts.map(p => p.id);
 
-    // Then get classification results for these products
-    const { data: results, error } = await supabase
+    // Get classification results for user's products
+    const { data: allResults, error: resultsError } = await supabase
       .from('user_product_classification_results')
       .select('id, confidence, hts_classification, product_id, classification_run_id, classified_at, tariff_rate')
       .in('product_id', productIds)
       .lt('confidence', threshold)
-      .order('classified_at', { ascending: false });
+      .order('classified_at', { ascending: false })
+      .limit(100); // Limit to 100 most recent exceptions
 
-    if (error) {
-      console.error('Error fetching exceptions:', error);
+    if (resultsError || !allResults || allResults.length === 0) {
       return [];
     }
 
-    if (!results || results.length === 0) {
-      return [];
-    }
-
-    // Check which results are not approved
-    const resultIds = results.map(r => r.id);
-    const { data: history, error: historyError } = await supabase
-      .from('user_product_classification_history')
-      .select('classification_result_id, approved')
-      .in('classification_result_id', resultIds);
-
-    if (historyError) {
-      console.error('Error fetching approval history:', historyError);
-    }
+    // Get approval history and products in parallel
+    const resultIds = allResults.map(r => r.id);
+    const [historyResponse, productsResponse] = await Promise.all([
+      supabase
+        .from('user_product_classification_history')
+        .select('classification_result_id, approved')
+        .in('classification_result_id', resultIds)
+        .eq('approved', true),
+      supabase
+        .from('user_products')
+        .select('id, product_name, product_description, country_of_origin, unit_cost')
+        .in('id', productIds)
+    ]);
 
     // Create a set of approved result IDs
     const approvedIds = new Set(
-      (history || [])
-        .filter(h => h.approved === true)
-        .map(h => h.classification_result_id)
+      (historyResponse.data || []).map(h => h.classification_result_id)
     );
 
-    // Create a map of product_id to product for quick lookup
-    const productMap = new Map(userProducts.map(p => [p.id, p]));
+    // Create product map
+    const productMap = new Map((productsResponse.data || []).map(p => [p.id, p]));
 
     // Filter out approved results and map to ExceptionItem format
-    const exceptions: ExceptionItem[] = results
+    const exceptions: ExceptionItem[] = allResults
       .filter(r => !approvedIds.has(r.id))
       .map((result: any) => {
         const product = productMap.get(result.product_id);
-        if (!product) return null; // Skip if product not found
+        if (!product) return null;
         
         const confidencePercent = Math.round((result.confidence || 0) * 100);
         
@@ -150,10 +143,11 @@ export async function getExceptions(userId: string): Promise<ExceptionItem[]> {
 
 /**
  * Fetch recent classification runs (latest 3)
+ * OPTIMIZED: Fixed N+1 query problem by fetching all data in parallel
  */
 export async function getRecentActivity(userId: string): Promise<RecentActivity[]> {
   try {
-    // Get latest 3 classification runs
+    // OPTIMIZED: Get latest 3 classification runs with limit
     const { data: runs, error } = await supabase
       .from('classification_runs')
       .select('id, created_at, status, run_type')
@@ -162,71 +156,82 @@ export async function getRecentActivity(userId: string): Promise<RecentActivity[
       .order('created_at', { ascending: false })
       .limit(3);
 
-    if (error) {
-      console.error('Error fetching recent activity:', error);
+    if (error || !runs || runs.length === 0) {
       return [];
     }
 
-    if (!runs || runs.length === 0) {
+    const runIds = runs.map(r => r.id);
+
+    // Get all classification results for these runs in one query
+    const { data: allResults, error: resultsError } = await supabase
+      .from('user_product_classification_results')
+      .select('id, hts_classification, confidence, product_id, classification_run_id')
+      .in('classification_run_id', runIds)
+      .order('classified_at', { ascending: false });
+
+    if (resultsError || !allResults || allResults.length === 0) {
       return [];
+    }
+
+    // Get unique product IDs
+    const productIds = [...new Set(allResults.map(r => r.product_id).filter(Boolean))] as number[];
+
+    // Get all products in one query
+    const { data: products, error: productsError } = await supabase
+      .from('user_products')
+      .select('id, product_name')
+      .in('id', productIds)
+      .eq('user_id', userId);
+
+    if (productsError || !products) {
+      return [];
+    }
+
+    // Create maps for quick lookup
+    const productMap = new Map(products.map(p => [p.id, p]));
+    const runMap = new Map(runs.map(r => [r.id, r]));
+    
+    // Group results by run_id and get first result for each run
+    const resultsByRun = new Map<number, typeof allResults[0]>();
+    for (const result of allResults) {
+      if (!resultsByRun.has(result.classification_run_id)) {
+        resultsByRun.set(result.classification_run_id, result);
+      }
     }
 
     // Map to RecentActivity format
-    const activities: RecentActivity[] = [];
+    const activities: RecentActivity[] = runs
+      .map(run => {
+        const result = resultsByRun.get(run.id);
+        if (!result || !result.product_id) return null;
 
-    for (const run of runs) {
-      // Get classification results for this run
-      const { data: results, error: resultsError } = await supabase
-        .from('user_product_classification_results')
-        .select('id, hts_classification, confidence, product_id')
-        .eq('classification_run_id', run.id)
-        .limit(1);
+        const product = productMap.get(result.product_id);
+        if (!product) return null;
 
-      if (resultsError || !results || results.length === 0) {
-        continue;
-      }
+        const confidencePercent = Math.round(((result.confidence as number) || 0) * 100);
+        const runDate = new Date(run.created_at);
+        const now = new Date();
+        const hoursAgo = Math.floor((now.getTime() - runDate.getTime()) / (1000 * 60 * 60));
+        
+        let timeStr = '';
+        if (hoursAgo < 1) {
+          timeStr = 'Just now';
+        } else if (hoursAgo < 24) {
+          timeStr = `${hoursAgo} hour${hoursAgo > 1 ? 's' : ''} ago`;
+        } else {
+          const daysAgo = Math.floor(hoursAgo / 24);
+          timeStr = `${daysAgo} day${daysAgo > 1 ? 's' : ''} ago`;
+        }
 
-      const firstResult = results[0] as { id: number; hts_classification: string | null; confidence: number | null; product_id: number };
-      
-      if (!firstResult || !firstResult.product_id) {
-        continue;
-      }
-      
-      // Get product details
-      const { data: product, error: productError } = await supabase
-        .from('user_products')
-        .select('id, product_name, user_id')
-        .eq('id', firstResult.product_id)
-        .eq('user_id', userId)
-        .single();
-
-      if (productError || !product) {
-        continue;
-      }
-
-      const confidencePercent = Math.round(((firstResult.confidence as number) || 0) * 100);
-      const runDate = new Date(run.created_at);
-      const now = new Date();
-      const hoursAgo = Math.floor((now.getTime() - runDate.getTime()) / (1000 * 60 * 60));
-      
-      let timeStr = '';
-      if (hoursAgo < 1) {
-        timeStr = 'Just now';
-      } else if (hoursAgo < 24) {
-        timeStr = `${hoursAgo} hour${hoursAgo > 1 ? 's' : ''} ago`;
-      } else {
-        const daysAgo = Math.floor(hoursAgo / 24);
-        timeStr = `${daysAgo} day${daysAgo > 1 ? 's' : ''} ago`;
-      }
-
-      activities.push({
-        product: product.product_name || 'Unnamed Product',
-        hts: (firstResult.hts_classification as string) || 'N/A',
-        confidence: `${confidencePercent}%`,
-        time: timeStr,
-        status: 'auto-approved',
-      });
-    }
+        return {
+          product: product.product_name || 'Unnamed Product',
+          hts: (result.hts_classification as string) || 'N/A',
+          confidence: `${confidencePercent}%`,
+          time: timeStr,
+          status: 'auto-approved',
+        };
+      })
+      .filter((a): a is RecentActivity => a !== null);
 
     return activities;
   } catch (error) {
@@ -244,82 +249,82 @@ export interface DashboardStats {
 
 /**
  * Fetch dashboard statistics
+ * OPTIMIZED: Runs queries in parallel and uses efficient counting
  */
 export async function getDashboardStats(userId: string): Promise<DashboardStats> {
   try {
-    console.log('Fetching dashboard stats for user:', userId);
-    // 1. Exceptions: All products that have not been approved by user
-    const exceptions = await getExceptions(userId);
-    const exceptionsCount = exceptions.length;
-    console.log('Exceptions count:', exceptionsCount);
-
-    // 2. Classified: All classification runs by user in the last 1 month
     const oneMonthAgo = new Date();
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-    
-    const { data: runs, count, error: runsError } = await supabase
-      .from('classification_runs')
-      .select('id', { count: 'exact', head: false })
-      .eq('user_id', userId)
-      .eq('status', 'completed')
-      .gte('created_at', oneMonthAgo.toISOString());
 
-    const classifiedCount = runsError ? 0 : (count || runs?.length || 0);
-    console.log('Classified runs count:', classifiedCount, 'runs:', runs?.length, 'count:', count);
+    // OPTIMIZED: Run all queries in parallel including user metadata
+    const [
+      userMetadataResponse,
+      runsResponse,
+      userProductsResponse,
+      approvedHistoryResponse
+    ] = await Promise.all([
+      getUserMetadata(userId),
+      // Get classification runs count for last month
+      supabase
+        .from('classification_runs')
+        .select('id', { count: 'exact', head: false })
+        .eq('user_id', userId)
+        .eq('status', 'completed')
+        .gte('created_at', oneMonthAgo.toISOString()),
+      // Get user product IDs
+      supabase
+        .from('user_products')
+        .select('id')
+        .eq('user_id', userId),
+      // Get all approved history
+      supabase
+        .from('user_product_classification_history')
+        .select('classification_result_id')
+        .eq('approved', true)
+    ]);
 
-    // 3. Product Profiles: All products approved by user in total history
-    // Get all approved classification result IDs
-    const { data: approvedHistory, error: approvedError } = await supabase
-      .from('user_product_classification_history')
-      .select('classification_result_id')
-      .eq('approved', true);
+    const userMetadata = userMetadataResponse;
+    const threshold = userMetadata?.confidence_threshold || 0.8;
+    const classifiedCount = runsResponse.count || 0;
+    const userProductIds = new Set((userProductsResponse.data || []).map(p => p.id));
+    const approvedResultIds = new Set((approvedHistoryResponse.data || []).map(h => h.classification_result_id));
 
-    if (approvedError || !approvedHistory || approvedHistory.length === 0) {
+    if (userProductIds.size === 0) {
       return {
-        exceptions: exceptionsCount,
+        exceptions: 0,
         classified: classifiedCount,
         productProfiles: 0,
         avgConfidence: '0%',
       };
     }
 
-    const approvedResultIds = approvedHistory.map(h => h.classification_result_id);
-
-    // Get classification results for these approved IDs
-    const { data: approvedResults, error: resultsError } = await supabase
+    // Get approved results for user's products only
+    const { data: approvedResults } = await supabase
       .from('user_product_classification_results')
       .select('id, confidence, product_id')
-      .in('id', approvedResultIds);
+      .in('id', Array.from(approvedResultIds))
+      .in('product_id', Array.from(userProductIds));
 
-    if (resultsError || !approvedResults || approvedResults.length === 0) {
-      return {
-        exceptions: exceptionsCount,
-        classified: classifiedCount,
-        productProfiles: 0,
-        avgConfidence: '0%',
-      };
-    }
+    const userApprovedResults = (approvedResults || []).filter(r => userProductIds.has(r.product_id));
+    const productProfilesCount = userApprovedResults.length;
+    const userApprovedResultIds = new Set(userApprovedResults.map(r => r.id));
 
-    // Get product IDs and filter by user
-    const approvedProductIds = approvedResults.map(r => r.product_id);
-    const { data: userProducts, error: productsError } = await supabase
-      .from('user_products')
+    // Get exceptions: results with confidence < threshold and not approved
+    // Fetch and filter in memory (more reliable than complex query)
+    const { data: exceptionResults } = await supabase
+      .from('user_product_classification_results')
       .select('id')
-      .eq('user_id', userId)
-      .in('id', approvedProductIds);
+      .in('product_id', Array.from(userProductIds))
+      .lt('confidence', threshold)
+      .limit(1000); // Reasonable limit
+    
+    const exceptionsCount = (exceptionResults || []).filter(r => !userApprovedResultIds.has(r.id)).length;
 
-    const productProfilesCount = productsError ? 0 : (userProducts?.length || 0);
-    console.log('Product profiles count:', productProfilesCount);
-
-    // 4. Average Confidence: Average confidence level for all approved products in history
-    // Filter approved results by user's products
-    const userProductIds = new Set(userProducts?.map(p => p.id) || []);
-    const userApprovedResults = approvedResults.filter(r => userProductIds.has(r.product_id));
-
+    // Calculate average confidence for approved products
     let avgConfidence = '0%';
     if (userApprovedResults.length > 0) {
       const confidences = userApprovedResults
-        .map(r => r.confidence)
+        .map((r: any) => r.confidence)
         .filter((c): c is number => c !== null && c !== undefined);
       
       if (confidences.length > 0) {
@@ -328,16 +333,13 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
         avgConfidence = `${avg.toFixed(1)}%`;
       }
     }
-    console.log('Average confidence:', avgConfidence);
 
-    const stats = {
-      exceptions: exceptionsCount,
+    return {
+      exceptions: exceptionsCount || 0,
       classified: classifiedCount,
       productProfiles: productProfilesCount,
       avgConfidence: avgConfidence,
     };
-    console.log('Dashboard stats:', stats);
-    return stats;
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);
     return {
@@ -375,12 +377,13 @@ export interface ProductProfile {
  */
 export async function getProductProfiles(userId: string): Promise<ProductProfile[]> {
   try {
-    // Get all product profiles for this user
+    // OPTIMIZED: Get product profiles with limit
     const { data: profiles, error: profilesError } = await supabase
       .from('user_product_profiles')
       .select('id, product_id, classification_result_id, updated_at')
       .eq('user_id', userId)
-      .order('updated_at', { ascending: false });
+      .order('updated_at', { ascending: false })
+      .limit(500); // Limit to 500 most recent profiles
 
     if (profilesError) {
       console.error('Error fetching product profiles:', profilesError);

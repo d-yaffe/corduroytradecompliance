@@ -37,31 +37,21 @@ export function Activity() {
           .eq('status', 'completed')
           .order('created_at', { ascending: false });
 
-        if (runsError) {
-          console.error('Error fetching classification runs:', runsError);
-          setIsLoading(false);
-          return;
-        }
-
-        if (!runs || runs.length === 0) {
+        if (runsError || !runs || runs.length === 0) {
           setActivities([]);
           setIsLoading(false);
           return;
         }
 
-        // Get all classification results for all runs
         const runIds = runs.map(r => r.id);
-        if (runIds.length === 0) {
-          setActivities([]);
-          setIsLoading(false);
-          return;
-        }
 
+        // OPTIMIZED: Get results first, then only fetch products we need
         const { data: allResults, error: resultsError } = await supabase
           .from('user_product_classification_results')
           .select('id, hts_classification, confidence, product_id, classified_at, classification_run_id')
           .in('classification_run_id', runIds)
-          .order('classified_at', { ascending: false });
+          .order('classified_at', { ascending: false })
+          .limit(500); // Limit to 500 most recent
 
         if (resultsError || !allResults || allResults.length === 0) {
           setActivities([]);
@@ -69,35 +59,33 @@ export function Activity() {
           return;
         }
 
-        // Get all product IDs
-        const productIds = allResults.map(r => r.product_id).filter(Boolean) as number[];
-        if (productIds.length === 0) {
-          setActivities([]);
-          setIsLoading(false);
-          return;
-        }
-
-        // Get all products in one query
-        const { data: products, error: productsError } = await supabase
-          .from('user_products')
-          .select('id, product_name')
-          .in('id', productIds);
-
-        if (productsError || !products) {
-          setActivities([]);
-          setIsLoading(false);
-          return;
-        }
-
-        // Get all approval history in one query
+        // Get unique product IDs from results
+        const productIds = [...new Set(allResults.map(r => r.product_id).filter(Boolean))] as number[];
         const resultIds = allResults.map(r => r.id);
-        const { data: allHistory, error: historyError } = await supabase
-          .from('user_product_classification_history')
-          .select('classification_result_id, approved')
-          .in('classification_result_id', resultIds);
+
+        // Run remaining queries in parallel
+        const [productsResponse, historyResponse] = await Promise.all([
+          supabase
+            .from('user_products')
+            .select('id, product_name')
+            .in('id', productIds)
+            .eq('user_id', user.id),
+          supabase
+            .from('user_product_classification_history')
+            .select('classification_result_id, approved')
+            .in('classification_result_id', resultIds)
+        ]);
+
+        const products = productsResponse.data || [];
+        if (products.length === 0) {
+          setActivities([]);
+          setIsLoading(false);
+          return;
+        }
+
+        const productMap = new Map(products.map(p => [p.id, p]));
 
         // Create maps for quick lookup
-        const productMap = new Map(products.map(p => [p.id, p]));
         const runMap = new Map(runs.map(r => [r.id, r]));
         const approvedMap = new Map(
           (allHistory || [])
