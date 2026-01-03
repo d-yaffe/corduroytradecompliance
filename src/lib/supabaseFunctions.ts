@@ -21,6 +21,8 @@ export async function classifyProduct(
     description: string;
     score: number;
   }>;
+  questions?: string[];
+  needs_clarification?: boolean;
 } | null> {
   try {
     // Get confidence threshold from user metadata if not provided

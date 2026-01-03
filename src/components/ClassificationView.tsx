@@ -141,64 +141,59 @@ export function ClassificationView() {
       
       if (!response) {
         setLoading(false);
-        return; // Silently fail
+        return;
       }
 
-      // Check if response indicates clarification is needed (no candidates or empty candidates)
-      if (!response.candidates || response.candidates.length === 0) {
-        // This might indicate clarification is needed
-        // For now, we'll treat normalized/attributes as parsed data and wait for clarification
-        // If the backend returns questions, they would be in the response
-        const clarificationMsg: ClarificationMessage = {
+      // Display questions if backend sends them
+      if (response.questions && response.questions.length > 0) {
+        const clarificationMsgs: ClarificationMessage[] = response.questions.map((q: string) => ({
           step: 'preprocess',
           type: 'question',
-          content: response.normalized 
-            ? `Please confirm: ${response.normalized}. ${JSON.stringify(response.attributes || {})}`
-            : 'Please provide more information about the product.',
+          content: q,
           timestamp: new Date().toISOString(),
-        };
+        }));
 
-        setClarificationMessages([clarificationMsg]);
+        setClarificationMessages(clarificationMsgs);
         setNeedsClarification(true);
         setCurrentStep('preprocess');
         setParsedData({ normalized: response.normalized, attributes: response.attributes });
         
-        // Save question to database
-        await addClarificationMessage(runId, clarificationMsg);
+        for (const msg of clarificationMsgs) {
+          await addClarificationMessage(runId, msg);
+        }
 
         setLoading(false);
-        return; // Wait for user response
+        return;
       }
 
-      // We have candidates - use the first one as primary result
-      const primaryCandidate = response.candidates[0];
-      const alternateCandidates = response.candidates.slice(1);
+      // Display candidates if backend sends them
+      if (response.candidates && response.candidates.length > 0) {
+        const primaryCandidate = response.candidates[0];
+        const alternateCandidates = response.candidates.slice(1);
 
-      // Format result
-      const classificationResult: ClassificationResultData = {
-        hts: primaryCandidate.hts || 'N/A',
-        confidence: Math.round(primaryCandidate.score * 100),
-        description: primaryCandidate.description || '',
-        reasoning: `Based on normalized input: ${response.normalized || query}. Attributes: ${JSON.stringify(response.attributes || {})}`,
-        parsed_data: {
-          product_name: query,
-          product_description: productDescription || undefined,
-          country_of_origin: originCountry || undefined,
-          materials: materials.length > 0 ? materials : undefined,
-          unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
-          vendor: vendor || undefined,
-        },
-      };
+        const classificationResult: ClassificationResultData = {
+          hts: primaryCandidate.hts || 'N/A',
+          confidence: Math.round(primaryCandidate.score * 100),
+          description: primaryCandidate.description || '',
+          reasoning: `Based on normalized input: ${response.normalized || query}. Attributes: ${JSON.stringify(response.attributes || {})}`,
+          parsed_data: {
+            product_name: query,
+            product_description: productDescription || undefined,
+            country_of_origin: originCountry || undefined,
+            materials: materials.length > 0 ? materials : undefined,
+            unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
+            vendor: vendor || undefined,
+          },
+        };
 
-      // If there are alternate candidates, use the second one as alternate_classification
-      if (alternateCandidates.length > 0) {
-        classificationResult.alternate_classification = alternateCandidates[0].hts;
-      }
+        if (alternateCandidates.length > 0) {
+          classificationResult.alternate_classification = alternateCandidates[0].hts;
+        }
 
-      setResult(classificationResult);
-      setNeedsClarification(false);
-      setCurrentStep(null);
-      setParsedData({ normalized: response.normalized, attributes: response.attributes });
+        setResult(classificationResult);
+        setNeedsClarification(false);
+        setCurrentStep(null);
+        setParsedData({ normalized: response.normalized, attributes: response.attributes });
 
       // Save product and result to database
       const productId = await saveProduct(user.id, runId, {
@@ -284,56 +279,54 @@ export function ClassificationView() {
         return; // Silently fail
       }
 
-      // Check if still needs clarification (no candidates)
-      if (!classificationResponse.candidates || classificationResponse.candidates.length === 0) {
-        const clarificationMsg: ClarificationMessage = {
+      // Display questions if backend sends them
+      if (classificationResponse.questions && classificationResponse.questions.length > 0) {
+        const clarificationMsgs: ClarificationMessage[] = classificationResponse.questions.map((q: string) => ({
           step: currentStep,
           type: 'question',
-          content: classificationResponse.normalized 
-            ? `Please confirm: ${classificationResponse.normalized}. ${JSON.stringify(classificationResponse.attributes || {})}`
-            : 'Please provide more information about the product.',
+          content: q,
           timestamp: new Date().toISOString(),
-        };
+        }));
 
-        setClarificationMessages(prev => [...prev, clarificationMsg]);
+        setClarificationMessages(prev => [...prev, ...clarificationMsgs]);
         setParsedData({ normalized: classificationResponse.normalized, attributes: classificationResponse.attributes });
         
-        // Save question to database
-        await addClarificationMessage(classificationRunId, clarificationMsg);
+        for (const msg of clarificationMsgs) {
+          await addClarificationMessage(classificationRunId, msg);
+        }
 
         setIsProcessingClarification(false);
-        return; // Still needs more clarification
+        return;
       }
 
-      // We have candidates - use the first one as primary result
-      const primaryCandidate = classificationResponse.candidates[0];
-      const alternateCandidates = classificationResponse.candidates.slice(1);
+      // Display candidates if backend sends them
+      if (classificationResponse.candidates && classificationResponse.candidates.length > 0) {
+        const primaryCandidate = classificationResponse.candidates[0];
+        const alternateCandidates = classificationResponse.candidates.slice(1);
 
-      // Format and display result
-      const classificationResult: ClassificationResultData = {
-        hts: primaryCandidate.hts || 'N/A',
-        confidence: Math.round(primaryCandidate.score * 100),
-        description: primaryCandidate.description || '',
-        reasoning: `Based on normalized input: ${classificationResponse.normalized || query}. Attributes: ${JSON.stringify(classificationResponse.attributes || {})}`,
-        parsed_data: {
-          product_name: query,
-          product_description: productDescription || undefined,
-          country_of_origin: originCountry || undefined,
-          materials: materials.length > 0 ? materials : undefined,
-          unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
-          vendor: vendor || undefined,
-        },
-      };
+        const classificationResult: ClassificationResultData = {
+          hts: primaryCandidate.hts || 'N/A',
+          confidence: Math.round(primaryCandidate.score * 100),
+          description: primaryCandidate.description || '',
+          reasoning: `Based on normalized input: ${classificationResponse.normalized || query}. Attributes: ${JSON.stringify(classificationResponse.attributes || {})}`,
+          parsed_data: {
+            product_name: query,
+            product_description: productDescription || undefined,
+            country_of_origin: originCountry || undefined,
+            materials: materials.length > 0 ? materials : undefined,
+            unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
+            vendor: vendor || undefined,
+          },
+        };
 
-      // If there are alternate candidates, use the second one as alternate_classification
-      if (alternateCandidates.length > 0) {
-        classificationResult.alternate_classification = alternateCandidates[0].hts;
-      }
+        if (alternateCandidates.length > 0) {
+          classificationResult.alternate_classification = alternateCandidates[0].hts;
+        }
 
-      setResult(classificationResult);
-      setNeedsClarification(false);
-      setCurrentStep(null);
-      setParsedData({ normalized: classificationResponse.normalized, attributes: classificationResponse.attributes });
+        setResult(classificationResult);
+        setNeedsClarification(false);
+        setCurrentStep(null);
+        setParsedData({ normalized: classificationResponse.normalized, attributes: classificationResponse.attributes });
 
       // Save to database
       if (classificationRunId) {
