@@ -148,9 +148,13 @@ export function ClassificationView() {
         return;
       }
 
-      // Display questions if backend sends them
-      if (response.questions && response.questions.length > 0) {
-        const clarificationMsgs: ClarificationMessage[] = response.questions.map((q: string) => ({
+      // Display clarifications if backend sends them (check for type: 'clarify' or clarifications array)
+      const clarificationQuestions = response.type === 'clarify' 
+        ? response.clarifications 
+        : response.questions || response.clarifications;
+      
+      if (clarificationQuestions && clarificationQuestions.length > 0) {
+        const clarificationMsgs: ClarificationMessage[] = clarificationQuestions.map((q: string) => ({
           step: 'preprocess',
           type: 'question',
           content: q,
@@ -293,9 +297,13 @@ export function ClassificationView() {
         return;
       }
 
-      // Display questions if backend sends them
-      if (classificationResponse.questions && classificationResponse.questions.length > 0) {
-        const clarificationMsgs: ClarificationMessage[] = classificationResponse.questions.map((q: string) => ({
+      // Display clarifications if backend sends them (check for type: 'clarify' or clarifications array)
+      const clarificationQuestions = classificationResponse.type === 'clarify' 
+        ? classificationResponse.clarifications 
+        : classificationResponse.questions || classificationResponse.clarifications;
+      
+      if (clarificationQuestions && clarificationQuestions.length > 0) {
+        const clarificationMsgs: ClarificationMessage[] = clarificationQuestions.map((q: string) => ({
           step: currentStep,
           type: 'question',
           content: q,

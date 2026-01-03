@@ -22,6 +22,8 @@ export async function classifyProduct(
     score: number;
   }>;
   questions?: string[];
+  clarifications?: string[];
+  type?: string;
   needs_clarification?: boolean;
 } | null> {
   try {
