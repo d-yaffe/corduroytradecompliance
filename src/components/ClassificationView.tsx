@@ -195,25 +195,26 @@ export function ClassificationView() {
         setCurrentStep(null);
         setParsedData({ normalized: response.normalized, attributes: response.attributes });
 
-      // Save product and result to database
-      const productId = await saveProduct(user.id, runId, {
-        product_name: query,
-        product_description: productDescription || undefined,
-        country_of_origin: originCountry || undefined,
-        materials: materials.length > 0 ? materials : undefined,
-        unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
-        vendor: vendor || undefined,
-      });
+        // Save product and result to database
+        const productId = await saveProduct(user.id, runId, {
+          product_name: query,
+          product_description: productDescription || undefined,
+          country_of_origin: originCountry || undefined,
+          materials: materials.length > 0 ? materials : undefined,
+          unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
+          vendor: vendor || undefined,
+        });
 
-      await saveClassificationResult(productId, runId, {
-        hts_classification: classificationResult.hts,
-        alternate_classification: classificationResult.alternate_classification || undefined,
-        confidence: primaryCandidate.score || undefined,
-        unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
-      });
+        await saveClassificationResult(productId, runId, {
+          hts_classification: classificationResult.hts,
+          alternate_classification: classificationResult.alternate_classification || undefined,
+          confidence: primaryCandidate.score || undefined,
+          unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
+        });
 
-      // Update run status to completed
-      await updateClassificationRunStatus(runId, 'completed');
+        // Update run status to completed
+        await updateClassificationRunStatus(runId, 'completed');
+      }
 
       setLoading(false);
     } catch (error: any) {
@@ -328,25 +329,26 @@ export function ClassificationView() {
         setCurrentStep(null);
         setParsedData({ normalized: classificationResponse.normalized, attributes: classificationResponse.attributes });
 
-      // Save to database
-      if (classificationRunId) {
-        const productId = await saveProduct(user.id, classificationRunId, {
-          product_name: query,
-          product_description: productDescription || undefined,
-          country_of_origin: originCountry || undefined,
-          materials: materials.length > 0 ? materials : undefined,
-          unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
-          vendor: vendor || undefined,
-        });
+        // Save to database
+        if (classificationRunId) {
+          const productId = await saveProduct(user.id, classificationRunId, {
+            product_name: query,
+            product_description: productDescription || undefined,
+            country_of_origin: originCountry || undefined,
+            materials: materials.length > 0 ? materials : undefined,
+            unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
+            vendor: vendor || undefined,
+          });
 
-        await saveClassificationResult(productId, classificationRunId, {
-          hts_classification: classificationResult.hts,
-          alternate_classification: classificationResult.alternate_classification || undefined,
-          confidence: primaryCandidate.score || undefined,
-          unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
-        });
+          await saveClassificationResult(productId, classificationRunId, {
+            hts_classification: classificationResult.hts,
+            alternate_classification: classificationResult.alternate_classification || undefined,
+            confidence: primaryCandidate.score || undefined,
+            unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
+          });
 
-        await updateClassificationRunStatus(classificationRunId, 'completed');
+          await updateClassificationRunStatus(classificationRunId, 'completed');
+        }
       }
 
       setIsProcessingClarification(false);
