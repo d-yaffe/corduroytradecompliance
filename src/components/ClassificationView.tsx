@@ -3,7 +3,7 @@ import { Search, Sparkles, AlertTriangle, CheckCircle, ChevronDown, ChevronUp, M
 import { LLMAssistant } from './LLMAssistant';
 import { ClarificationChatbot } from './ClarificationChatbot';
 import { ClassificationResults, ClassificationResultData } from './ClassificationResults';
-import { preprocessProduct, parseProduct, applyRules, generateRuling } from '../lib/supabaseFunctions';
+import { classifyProduct, generateRuling } from '../lib/supabaseFunctions';
 import { 
   createClassificationRun, 
   addClarificationMessage, 
@@ -114,144 +114,107 @@ export function ClassificationView() {
       const runId = await createClassificationRun(user.id, 'single');
       setClassificationRunId(runId);
 
-      // Prepare input data
-      const inputData = {
+      // Build comprehensive product description from all input fields
+      let productDescriptionText = query;
+      if (productDescription) {
+        productDescriptionText += `. ${productDescription}`;
+      }
+      if (originCountry) {
+        productDescriptionText += `. Country of origin: ${originCountry}`;
+      }
+      if (materials.length > 0) {
+        const materialsText = materials.map(m => `${m.material} (${m.percentage}%)`).join(', ');
+        productDescriptionText += `. Materials: ${materialsText}`;
+      }
+      if (unitCost) {
+        productDescriptionText += `. Unit cost: ${unitCost}`;
+      }
+      if (vendor) {
+        productDescriptionText += `. Vendor: ${vendor}`;
+      }
+      if (sku) {
+        productDescriptionText += `. SKU: ${sku}`;
+      }
+
+      // Call unified classification function
+      const response = await classifyProduct(productDescriptionText, user.id);
+      
+      if (!response) {
+        setLoading(false);
+        return; // Silently fail
+      }
+
+      // Check if response indicates clarification is needed (no candidates or empty candidates)
+      if (!response.candidates || response.candidates.length === 0) {
+        // This might indicate clarification is needed
+        // For now, we'll treat normalized/attributes as parsed data and wait for clarification
+        // If the backend returns questions, they would be in the response
+        const clarificationMsg: ClarificationMessage = {
+          step: 'preprocess',
+          type: 'question',
+          content: response.normalized 
+            ? `Please confirm: ${response.normalized}. ${JSON.stringify(response.attributes || {})}`
+            : 'Please provide more information about the product.',
+          timestamp: new Date().toISOString(),
+        };
+
+        setClarificationMessages([clarificationMsg]);
+        setNeedsClarification(true);
+        setCurrentStep('preprocess');
+        setParsedData({ normalized: response.normalized, attributes: response.attributes });
+        
+        // Save question to database
+        await addClarificationMessage(runId, clarificationMsg);
+
+        setLoading(false);
+        return; // Wait for user response
+      }
+
+      // We have candidates - use the first one as primary result
+      const primaryCandidate = response.candidates[0];
+      const alternateCandidates = response.candidates.slice(1);
+
+      // Format result
+      const classificationResult: ClassificationResultData = {
+        hts: primaryCandidate.hts || 'N/A',
+        confidence: Math.round(primaryCandidate.score * 100),
+        description: primaryCandidate.description || '',
+        reasoning: `Based on normalized input: ${response.normalized || query}. Attributes: ${JSON.stringify(response.attributes || {})}`,
+        parsed_data: {
+          product_name: query,
+          product_description: productDescription || undefined,
+          country_of_origin: originCountry || undefined,
+          materials: materials.length > 0 ? materials : undefined,
+          unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
+          vendor: vendor || undefined,
+        },
+      };
+
+      // If there are alternate candidates, use the second one as alternate_classification
+      if (alternateCandidates.length > 0) {
+        classificationResult.alternate_classification = alternateCandidates[0].hts;
+      }
+
+      setResult(classificationResult);
+      setNeedsClarification(false);
+      setCurrentStep(null);
+      setParsedData({ normalized: response.normalized, attributes: response.attributes });
+
+      // Save product and result to database
+      const productId = await saveProduct(user.id, runId, {
         product_name: query,
         product_description: productDescription || undefined,
         country_of_origin: originCountry || undefined,
         materials: materials.length > 0 ? materials : undefined,
         unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
         vendor: vendor || undefined,
-        sku: sku || undefined,
-      };
-
-      // Step 1: Preprocess
-      let preprocessResponse = await preprocessProduct(inputData);
-      if (!preprocessResponse) {
-        setLoading(false);
-        return; // Silently fail
-      }
-
-      // Check if preprocess returned clarification questions
-      if (preprocessResponse?.needs_clarification || preprocessResponse?.questions) {
-        const questions = Array.isArray(preprocessResponse.questions) 
-          ? preprocessResponse.questions 
-          : [preprocessResponse.questions || preprocessResponse.message || 'Please provide more information'];
-        
-        const clarificationMsgs: ClarificationMessage[] = questions.map((q: string) => ({
-          step: 'preprocess',
-          type: 'question',
-          content: q,
-          timestamp: new Date().toISOString(),
-        }));
-
-        setClarificationMessages(clarificationMsgs);
-        setNeedsClarification(true);
-        setCurrentStep('preprocess');
-        
-        // Save questions to database
-        for (const msg of clarificationMsgs) {
-          await addClarificationMessage(runId, msg);
-        }
-
-        setLoading(false);
-        return; // Wait for user response
-      }
-
-      // Step 2: Parse (if preprocess passed)
-      setCurrentStep('parse');
-      let parseResponse = await parseProduct(preprocessResponse || inputData);
-      if (!parseResponse) {
-        setLoading(false);
-        return; // Silently fail
-      }
-
-      // Check if parse returned clarification questions
-      if (parseResponse?.needs_clarification || parseResponse?.questions) {
-        const questions = Array.isArray(parseResponse.questions) 
-          ? parseResponse.questions 
-          : [parseResponse.questions || parseResponse.message || 'Please provide more information'];
-        
-        const clarificationMsgs: ClarificationMessage[] = questions.map((q: string) => ({
-          step: 'parse',
-          type: 'question',
-          content: q,
-          timestamp: new Date().toISOString(),
-        }));
-
-        setClarificationMessages(prev => [...prev, ...clarificationMsgs]);
-        setNeedsClarification(true);
-        setCurrentStep('parse');
-        
-        // Save questions to database
-        for (const msg of clarificationMsgs) {
-          await addClarificationMessage(runId, msg);
-        }
-
-        setLoading(false);
-        return; // Wait for user response
-      }
-
-      // Store parsed data
-      setParsedData(parseResponse);
-
-      // Step 3: Apply Rules (get HTS code)
-      setCurrentStep('rules');
-      let rulesResponse = await applyRules(parseResponse || preprocessResponse || inputData);
-      if (!rulesResponse) {
-        setLoading(false);
-        return; // Silently fail
-      }
-
-      // Step 4: Get Rulings
-      setCurrentStep('rulings');
-      let rulingsResponse = await generateRuling(
-        `Get rulings and documentation for HTS code ${rulesResponse?.hts || rulesResponse?.hts_classification || ''}`,
-        [],
-        {
-          name: parseResponse?.product_name || query,
-          description: parseResponse?.product_description || productDescription,
-          hts: rulesResponse?.hts || rulesResponse?.hts_classification,
-          origin: parseResponse?.country_of_origin || originCountry,
-        }
-      ).catch(() => null); // Silently fail if rulings fail
-
-      // Format result
-      const classificationResult: ClassificationResultData = {
-        hts: rulesResponse?.hts || rulesResponse?.hts_classification || 'N/A',
-        confidence: rulesResponse?.confidence ? Math.round(rulesResponse.confidence * 100) : 0,
-        description: rulesResponse?.description || rulesResponse?.hts_description || '',
-        tariff_rate: rulesResponse?.tariff_rate || undefined,
-        tariff_amount: rulesResponse?.tariff_amount || undefined,
-        total_cost: rulesResponse?.total_cost || undefined,
-        alternate_classification: rulesResponse?.alternate_classification || undefined,
-        reasoning: rulesResponse?.reasoning || rulesResponse?.explanation || '',
-        rulings: rulingsResponse || undefined,
-        parsed_data: parseResponse || undefined,
-      };
-
-      setResult(classificationResult);
-      setNeedsClarification(false);
-      setCurrentStep(null);
-
-      // Save product and result to database
-      const productId = await saveProduct(user.id, runId, {
-        product_name: parseResponse?.product_name || query,
-        product_description: parseResponse?.product_description || productDescription || undefined,
-        country_of_origin: parseResponse?.country_of_origin || originCountry || undefined,
-        materials: parseResponse?.materials || (materials.length > 0 ? materials : undefined),
-        unit_cost: parseResponse?.unit_cost || (unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined),
-        vendor: parseResponse?.vendor || vendor || undefined,
       });
 
       await saveClassificationResult(productId, runId, {
         hts_classification: classificationResult.hts,
         alternate_classification: classificationResult.alternate_classification || undefined,
-        tariff_rate: classificationResult.tariff_rate || undefined,
-        confidence: rulesResponse?.confidence || undefined,
-        unit_cost: parseResponse?.unit_cost || (unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined),
-        tariff_amount: classificationResult.tariff_amount || undefined,
-        total_cost: classificationResult.total_cost || undefined,
+        confidence: primaryCandidate.score || undefined,
+        unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
       });
 
       // Update run status to completed
@@ -282,156 +245,112 @@ export function ClassificationView() {
       await addClarificationMessage(classificationRunId, userMessage);
       setClarificationMessages(prev => [...prev, userMessage]);
 
-      // Prepare data with user response
-      const inputData = {
-        product_name: query,
-        product_description: productDescription || undefined,
-        country_of_origin: originCountry || undefined,
-        materials: materials.length > 0 ? materials : undefined,
-        unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
-        vendor: vendor || undefined,
-        sku: sku || undefined,
-        user_response: response,
-        previous_context: parsedData || undefined,
-      };
-
-      let responseData;
-      
-      // Re-run the current step with user response
-      if (currentStep === 'preprocess') {
-        responseData = await preprocessProduct(inputData);
-      } else if (currentStep === 'parse') {
-        responseData = await parseProduct(inputData);
-      } else {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
         setIsProcessingClarification(false);
         return;
       }
+
+      // Build product description with clarification response included
+      let productDescriptionText = query;
+      if (productDescription) {
+        productDescriptionText += `. ${productDescription}`;
+      }
+      // Add the clarification response
+      productDescriptionText += `. Clarification: ${response}`;
+      if (originCountry) {
+        productDescriptionText += `. Country of origin: ${originCountry}`;
+      }
+      if (materials.length > 0) {
+        const materialsText = materials.map(m => `${m.material} (${m.percentage}%)`).join(', ');
+        productDescriptionText += `. Materials: ${materialsText}`;
+      }
+      if (unitCost) {
+        productDescriptionText += `. Unit cost: ${unitCost}`;
+      }
+      if (vendor) {
+        productDescriptionText += `. Vendor: ${vendor}`;
+      }
+      if (sku) {
+        productDescriptionText += `. SKU: ${sku}`;
+      }
+
+      // Call unified classification function with updated description
+      const classificationResponse = await classifyProduct(productDescriptionText, user.id);
       
-      if (!responseData) {
+      if (!classificationResponse) {
         setIsProcessingClarification(false);
         return; // Silently fail
       }
 
-      // Check if still needs clarification
-      if (responseData?.needs_clarification || responseData?.questions) {
-        const questions = Array.isArray(responseData.questions) 
-          ? responseData.questions 
-          : [responseData.questions || responseData.message || 'Please provide more information'];
-        
-        const clarificationMsgs: ClarificationMessage[] = questions.map((q: string) => ({
+      // Check if still needs clarification (no candidates)
+      if (!classificationResponse.candidates || classificationResponse.candidates.length === 0) {
+        const clarificationMsg: ClarificationMessage = {
           step: currentStep,
           type: 'question',
-          content: q,
+          content: classificationResponse.normalized 
+            ? `Please confirm: ${classificationResponse.normalized}. ${JSON.stringify(classificationResponse.attributes || {})}`
+            : 'Please provide more information about the product.',
           timestamp: new Date().toISOString(),
-        }));
+        };
 
-        setClarificationMessages(prev => [...prev, ...clarificationMsgs]);
+        setClarificationMessages(prev => [...prev, clarificationMsg]);
+        setParsedData({ normalized: classificationResponse.normalized, attributes: classificationResponse.attributes });
         
-        // Save questions to database
-        for (const msg of clarificationMsgs) {
-          await addClarificationMessage(classificationRunId, msg);
-        }
+        // Save question to database
+        await addClarificationMessage(classificationRunId, clarificationMsg);
 
         setIsProcessingClarification(false);
         return; // Still needs more clarification
       }
 
-      // If preprocess passed, continue to parse
-      if (currentStep === 'preprocess') {
-        setCurrentStep('parse');
-        const parseResponse = await parseProduct(responseData || inputData);
-        
-        if (!parseResponse) {
-          setIsProcessingClarification(false);
-          return; // Silently fail
-        }
-        
-        if (parseResponse?.needs_clarification || parseResponse?.questions) {
-          const questions = Array.isArray(parseResponse.questions) 
-            ? parseResponse.questions 
-            : [parseResponse.questions || parseResponse.message || 'Please provide more information'];
-          
-          const clarificationMsgs: ClarificationMessage[] = questions.map((q: string) => ({
-            step: 'parse',
-            type: 'question',
-            content: q,
-            timestamp: new Date().toISOString(),
-          }));
-
-          setClarificationMessages(prev => [...prev, ...clarificationMsgs]);
-          setCurrentStep('parse');
-          
-          for (const msg of clarificationMsgs) {
-            await addClarificationMessage(classificationRunId, msg);
-          }
-
-          setIsProcessingClarification(false);
-          return;
-        }
-
-        setParsedData(parseResponse);
-        responseData = parseResponse;
-      }
-
-      // Continue with rules and rulings
-      setCurrentStep('rules');
-      const rulesResponse = await applyRules(responseData || inputData);
-      
-      if (!rulesResponse) {
-        setIsProcessingClarification(false);
-        return; // Silently fail
-      }
-      
-      setCurrentStep('rulings');
-      const rulingsResponse = await generateRuling(
-        `Get rulings and documentation for HTS code ${rulesResponse?.hts || rulesResponse?.hts_classification || ''}`,
-        [],
-        {
-          name: responseData?.product_name || query,
-          description: responseData?.product_description || productDescription,
-          hts: rulesResponse?.hts || rulesResponse?.hts_classification,
-          origin: responseData?.country_of_origin || originCountry,
-        }
-      ).catch(() => null); // Silently fail if rulings fail
+      // We have candidates - use the first one as primary result
+      const primaryCandidate = classificationResponse.candidates[0];
+      const alternateCandidates = classificationResponse.candidates.slice(1);
 
       // Format and display result
       const classificationResult: ClassificationResultData = {
-        hts: rulesResponse?.hts || rulesResponse?.hts_classification || 'N/A',
-        confidence: rulesResponse?.confidence ? Math.round(rulesResponse.confidence * 100) : 0,
-        description: rulesResponse?.description || rulesResponse?.hts_description || '',
-        tariff_rate: rulesResponse?.tariff_rate || undefined,
-        tariff_amount: rulesResponse?.tariff_amount || undefined,
-        total_cost: rulesResponse?.total_cost || undefined,
-        alternate_classification: rulesResponse?.alternate_classification || undefined,
-        reasoning: rulesResponse?.reasoning || rulesResponse?.explanation || '',
-        rulings: rulingsResponse || undefined,
-        parsed_data: responseData || undefined,
+        hts: primaryCandidate.hts || 'N/A',
+        confidence: Math.round(primaryCandidate.score * 100),
+        description: primaryCandidate.description || '',
+        reasoning: `Based on normalized input: ${classificationResponse.normalized || query}. Attributes: ${JSON.stringify(classificationResponse.attributes || {})}`,
+        parsed_data: {
+          product_name: query,
+          product_description: productDescription || undefined,
+          country_of_origin: originCountry || undefined,
+          materials: materials.length > 0 ? materials : undefined,
+          unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
+          vendor: vendor || undefined,
+        },
       };
+
+      // If there are alternate candidates, use the second one as alternate_classification
+      if (alternateCandidates.length > 0) {
+        classificationResult.alternate_classification = alternateCandidates[0].hts;
+      }
 
       setResult(classificationResult);
       setNeedsClarification(false);
       setCurrentStep(null);
+      setParsedData({ normalized: classificationResponse.normalized, attributes: classificationResponse.attributes });
 
       // Save to database
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user && classificationRunId) {
+      if (classificationRunId) {
         const productId = await saveProduct(user.id, classificationRunId, {
-          product_name: responseData?.product_name || query,
-          product_description: responseData?.product_description || productDescription || undefined,
-          country_of_origin: responseData?.country_of_origin || originCountry || undefined,
-          materials: responseData?.materials || (materials.length > 0 ? materials : undefined),
-          unit_cost: responseData?.unit_cost || (unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined),
-          vendor: responseData?.vendor || vendor || undefined,
+          product_name: query,
+          product_description: productDescription || undefined,
+          country_of_origin: originCountry || undefined,
+          materials: materials.length > 0 ? materials : undefined,
+          unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
+          vendor: vendor || undefined,
         });
 
         await saveClassificationResult(productId, classificationRunId, {
           hts_classification: classificationResult.hts,
           alternate_classification: classificationResult.alternate_classification || undefined,
-          tariff_rate: classificationResult.tariff_rate || undefined,
-          confidence: rulesResponse?.confidence || undefined,
-          unit_cost: responseData?.unit_cost || (unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined),
-          tariff_amount: classificationResult.tariff_amount || undefined,
-          total_cost: classificationResult.total_cost || undefined,
+          confidence: primaryCandidate.score || undefined,
+          unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
         });
 
         await updateClassificationRunStatus(classificationRunId, 'completed');
@@ -756,7 +675,7 @@ export function ClassificationView() {
                     <h4 className="text-slate-900 text-sm font-semibold mb-3">Clarification History</h4>
                     <ClarificationChatbot
                       messages={clarificationMessages}
-                      onSendMessage={() => {}}
+                      onSendMessage={async () => {}}
                       isLoading={false}
                     />
                   </div>

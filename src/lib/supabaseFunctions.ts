@@ -1,48 +1,68 @@
 import { supabase } from './supabase';
-
-type Action = "preprocess" | "parse" | "rules" | "rulings";
+import { getUserMetadata } from './userService';
 
 /**
- * Call the python-proxy Supabase Edge Function
+ * New unified classification function
+ * Calls python-proxy with product_description, user_id, and confidence_threshold
  */
-export async function callPythonProxy(
-  action: Action,
-  data: Record<string, any>
-): Promise<any> {
+export async function classifyProduct(
+  productDescription: string,
+  userId: string,
+  confidenceThreshold?: number
+): Promise<{
+  normalized?: string;
+  attributes?: {
+    material?: string;
+    use?: string;
+    [key: string]: any;
+  };
+  candidates?: Array<{
+    hts: string;
+    description: string;
+    score: number;
+  }>;
+} | null> {
   try {
+    // Get confidence threshold from user metadata if not provided
+    let threshold = confidenceThreshold;
+    if (threshold === undefined) {
+      const userMetadata = await getUserMetadata(userId);
+      threshold = userMetadata?.confidence_threshold || 0.75;
+    }
+
     const { data: response, error } = await supabase.functions.invoke('python-proxy', {
       body: {
-        action,
-        ...data,
+        product_description: productDescription,
+        user_id: userId,
+        confidence_threshold: threshold,
       },
     });
 
     if (error) {
-      // Silently log error without throwing - return null to indicate failure
       console.error('Supabase Edge Function error:', error);
-      // Return null instead of throwing to prevent error messages
       return null;
     }
 
     // Handle case where response might be a string that needs parsing
+    let parsedResponse = response;
     if (typeof response === 'string') {
       try {
-        return JSON.parse(response);
+        parsedResponse = JSON.parse(response);
       } catch {
-        return response;
+        return null;
       }
     }
 
-    return response;
+    return parsedResponse;
   } catch (error: any) {
     console.error('Error calling python-proxy:', error);
-    // Return null instead of throwing to prevent error messages
     return null;
   }
 }
 
 /**
  * Generate a ruling/response for chat
+ * (Kept for backward compatibility if still needed)
  */
 export async function generateRuling(
   message: string,
@@ -54,47 +74,36 @@ export async function generateRuling(
     origin?: string;
   }
 ): Promise<string | null> {
-  const response = await callPythonProxy('rulings', {
-    message,
-    conversation_history: conversationHistory || [],
-    product_context: productContext || {},
-  });
-
-  if (!response) {
-    return null; // Silently fail
-  }
-
-  // Handle different response formats
-  if (typeof response === 'string') {
-    return response;
-  } else if (response?.response || response?.text || response?.content) {
-    return response.response || response.text || response.content;
-  } else if (response?.data) {
-    return typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
-  }
-
-  return JSON.stringify(response);
+  // For now, return null as rulings endpoint may need separate implementation
+  // This can be updated if rulings are still needed
+  return null;
 }
 
 /**
- * Preprocess product data
+ * @deprecated Use classifyProduct instead
+ * Preprocess product data - kept for backward compatibility
  */
 export async function preprocessProduct(data: any): Promise<any> {
-  return callPythonProxy('preprocess', data);
+  console.warn('preprocessProduct is deprecated, use classifyProduct instead');
+  return null;
 }
 
 /**
- * Parse product information
+ * @deprecated Use classifyProduct instead
+ * Parse product information - kept for backward compatibility
  */
 export async function parseProduct(data: any): Promise<any> {
-  return callPythonProxy('parse', data);
+  console.warn('parseProduct is deprecated, use classifyProduct instead');
+  return null;
 }
 
 /**
- * Apply rules to product
+ * @deprecated Use classifyProduct instead
+ * Apply rules to product - kept for backward compatibility
  */
 export async function applyRules(data: any): Promise<any> {
-  return callPythonProxy('rules', data);
+  console.warn('applyRules is deprecated, use classifyProduct instead');
+  return null;
 }
 
 
