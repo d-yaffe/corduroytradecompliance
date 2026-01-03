@@ -32,6 +32,12 @@ export async function classifyProduct(
       threshold = userMetadata?.confidence_threshold || 0.75;
     }
 
+    console.log('Invoking python-proxy edge function with:', {
+      product_description: productDescription,
+      user_id: userId,
+      confidence_threshold: threshold,
+    });
+
     const { data: response, error } = await supabase.functions.invoke('python-proxy', {
       body: {
         product_description: productDescription,
@@ -39,6 +45,8 @@ export async function classifyProduct(
         confidence_threshold: threshold,
       },
     });
+
+    console.log('Edge function response:', { data: response, error });
 
     if (error) {
       console.error('Supabase Edge Function error:', error);

@@ -137,10 +137,14 @@ export function ClassificationView() {
       }
 
       // Call unified classification function
+      console.log('Calling classifyProduct with:', { productDescriptionText, userId: user.id });
       const response = await classifyProduct(productDescriptionText, user.id);
+      console.log('classifyProduct response:', response);
       
       if (!response) {
+        console.warn('No response from classifyProduct');
         setLoading(false);
+        setCurrentStep(null);
         return;
       }
 
@@ -222,6 +226,11 @@ export function ClassificationView() {
       // Silently handle error - don't show alert
       setLoading(false);
       setCurrentStep(null);
+      console.error('Full error details:', {
+        message: error?.message,
+        stack: error?.stack,
+        error: error,
+      });
     }
   };
 
@@ -273,11 +282,15 @@ export function ClassificationView() {
       }
 
       // Call unified classification function with updated description
+      console.log('Calling classifyProduct (clarification) with:', { productDescriptionText, userId: user.id });
       const classificationResponse = await classifyProduct(productDescriptionText, user.id);
+      console.log('classifyProduct (clarification) response:', classificationResponse);
       
       if (!classificationResponse) {
+        console.warn('No response from classifyProduct (clarification)');
         setIsProcessingClarification(false);
-        return; // Silently fail
+        setCurrentStep(null);
+        return;
       }
 
       // Display questions if backend sends them
