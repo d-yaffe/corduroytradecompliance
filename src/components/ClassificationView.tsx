@@ -174,14 +174,21 @@ export function ClassificationView() {
         return;
       }
 
-      // Display candidates if backend sends them
-      if (response.candidates && response.candidates.length > 0) {
-        const primaryCandidate = response.candidates[0];
-        const alternateCandidates = response.candidates.slice(1);
+      // Display candidates/matches if backend sends them
+      // Handle both 'answer' type with matches and regular candidates format
+      const matchesOrCandidates = response.type === 'answer' 
+        ? response.matches 
+        : response.candidates;
+      
+      if (matchesOrCandidates && matchesOrCandidates.length > 0) {
+        // Sort by score (descending) to get highest confidence first
+        const sortedMatches = [...matchesOrCandidates].sort((a, b) => (b.score || 0) - (a.score || 0));
+        const primaryCandidate = sortedMatches[0];
+        const alternateCandidates = sortedMatches.slice(1);
 
         const classificationResult: ClassificationResultData = {
           hts: primaryCandidate.hts || 'N/A',
-          confidence: Math.round(primaryCandidate.score * 100),
+          confidence: Math.round((primaryCandidate.score || response.max_confidence || 0) * 100),
           description: primaryCandidate.description || '',
           reasoning: `Based on normalized input: ${response.normalized || query}. Attributes: ${JSON.stringify(response.attributes || {})}`,
           parsed_data: {
@@ -194,6 +201,7 @@ export function ClassificationView() {
           },
         };
 
+        // Use the second highest confidence match as alternate classification
         if (alternateCandidates.length > 0) {
           classificationResult.alternate_classification = alternateCandidates[0].hts;
         }
@@ -216,7 +224,7 @@ export function ClassificationView() {
         await saveClassificationResult(productId, runId, {
           hts_classification: classificationResult.hts,
           alternate_classification: classificationResult.alternate_classification || undefined,
-          confidence: primaryCandidate.score || undefined,
+          confidence: primaryCandidate.score || response.max_confidence || undefined,
           unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
         });
 
@@ -321,14 +329,21 @@ export function ClassificationView() {
         return;
       }
 
-      // Display candidates if backend sends them
-      if (classificationResponse.candidates && classificationResponse.candidates.length > 0) {
-        const primaryCandidate = classificationResponse.candidates[0];
-        const alternateCandidates = classificationResponse.candidates.slice(1);
+      // Display candidates/matches if backend sends them
+      // Handle both 'answer' type with matches and regular candidates format
+      const matchesOrCandidates = classificationResponse.type === 'answer' 
+        ? classificationResponse.matches 
+        : classificationResponse.candidates;
+      
+      if (matchesOrCandidates && matchesOrCandidates.length > 0) {
+        // Sort by score (descending) to get highest confidence first
+        const sortedMatches = [...matchesOrCandidates].sort((a, b) => (b.score || 0) - (a.score || 0));
+        const primaryCandidate = sortedMatches[0];
+        const alternateCandidates = sortedMatches.slice(1);
 
         const classificationResult: ClassificationResultData = {
           hts: primaryCandidate.hts || 'N/A',
-          confidence: Math.round(primaryCandidate.score * 100),
+          confidence: Math.round((primaryCandidate.score || classificationResponse.max_confidence || 0) * 100),
           description: primaryCandidate.description || '',
           reasoning: `Based on normalized input: ${classificationResponse.normalized || query}. Attributes: ${JSON.stringify(classificationResponse.attributes || {})}`,
           parsed_data: {
@@ -341,6 +356,7 @@ export function ClassificationView() {
           },
         };
 
+        // Use the second highest confidence match as alternate classification
         if (alternateCandidates.length > 0) {
           classificationResult.alternate_classification = alternateCandidates[0].hts;
         }
@@ -364,7 +380,7 @@ export function ClassificationView() {
           await saveClassificationResult(productId, classificationRunId, {
             hts_classification: classificationResult.hts,
             alternate_classification: classificationResult.alternate_classification || undefined,
-            confidence: primaryCandidate.score || undefined,
+            confidence: primaryCandidate.score || classificationResponse.max_confidence || undefined,
             unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
           });
 

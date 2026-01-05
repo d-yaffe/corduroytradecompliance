@@ -21,6 +21,12 @@ export async function classifyProduct(
     description: string;
     score: number;
   }>;
+  matches?: Array<{
+    hts: string;
+    description: string;
+    score: number;
+  }>;
+  max_confidence?: number;
   questions?: string[];
   clarifications?: string[];
   type?: string;
