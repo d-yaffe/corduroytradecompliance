@@ -9,6 +9,11 @@ export interface ClassificationResultData {
   tariff_amount?: number;
   total_cost?: number;
   alternate_classification?: string;
+  alternate_classifications?: Array<{
+    hts: string;
+    description: string;
+    confidence: number;
+  }>;
   reasoning?: string;
   rulings?: any;
   parsed_data?: {
@@ -169,16 +174,40 @@ export function ClassificationResults({ result, onApprove, onReviewLater }: Clas
           </div>
         )}
 
-        {/* Alternate Classification */}
-        {result.alternate_classification && (
+        {/* Alternate Classifications */}
+        {(result.alternate_classifications && result.alternate_classifications.length > 0) || result.alternate_classification ? (
           <div className="border border-amber-200 bg-amber-50 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-3">
               <AlertCircle className="w-5 h-5 text-amber-600" />
-              <h4 className="text-amber-900 font-semibold">Alternate Classification</h4>
+              <h4 className="text-amber-900 font-semibold">
+                {result.alternate_classifications && result.alternate_classifications.length > 1 
+                  ? 'Alternate Classifications' 
+                  : 'Alternate Classification'}
+              </h4>
             </div>
-            <div className="text-amber-800 font-mono">{result.alternate_classification}</div>
+            {result.alternate_classifications && result.alternate_classifications.length > 0 ? (
+              <div className="space-y-3">
+                {result.alternate_classifications.map((alt, index) => (
+                  <div key={index} className="bg-white rounded-lg p-3 border border-amber-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-amber-800 font-mono font-semibold">{alt.hts}</div>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        alt.confidence >= 85 
+                          ? 'bg-amber-100 text-amber-700' 
+                          : 'bg-amber-50 text-amber-600'
+                      }`}>
+                        {alt.confidence}% Confidence
+                      </span>
+                    </div>
+                    <p className="text-amber-700 text-sm">{alt.description}</p>
+                  </div>
+                ))}
+              </div>
+            ) : result.alternate_classification ? (
+              <div className="text-amber-800 font-mono">{result.alternate_classification}</div>
+            ) : null}
           </div>
-        )}
+        ) : null}
 
         {/* Rulings */}
         {result.rulings && (

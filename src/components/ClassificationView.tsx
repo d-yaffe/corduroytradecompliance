@@ -214,8 +214,14 @@ export function ClassificationView() {
           },
         };
 
-        // Use the second highest confidence match as alternate classification
+        // Store all alternate classifications with confidence and descriptions
         if (alternateCandidates.length > 0) {
+          classificationResult.alternate_classifications = alternateCandidates.map(alt => ({
+            hts: alt.hts || 'N/A',
+            description: alt.description || '',
+            confidence: Math.round((alt.confidence || alt.score || 0) * 100),
+          }));
+          // Keep backward compatibility with alternate_classification
           classificationResult.alternate_classification = alternateCandidates[0].hts;
         }
 
@@ -382,8 +388,14 @@ export function ClassificationView() {
           },
         };
 
-        // Use the second highest confidence match as alternate classification
+        // Store all alternate classifications with confidence and descriptions
         if (alternateCandidates.length > 0) {
+          classificationResult.alternate_classifications = alternateCandidates.map(alt => ({
+            hts: alt.hts || 'N/A',
+            description: alt.description || '',
+            confidence: Math.round((alt.confidence || alt.score || 0) * 100),
+          }));
+          // Keep backward compatibility with alternate_classification
           classificationResult.alternate_classification = alternateCandidates[0].hts;
         }
 
