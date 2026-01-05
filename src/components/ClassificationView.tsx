@@ -176,21 +176,34 @@ export function ClassificationView() {
 
       // Display candidates/matches if backend sends them
       // Handle both 'answer' type with matches and regular candidates format
-      const matchesOrCandidates = response.type === 'answer' 
-        ? response.matches 
-        : response.candidates;
+      let matchedRules: Array<{hts: string; description: string; score: number; confidence?: number; rationale?: string}> = [];
       
-      if (matchesOrCandidates && matchesOrCandidates.length > 0) {
-        // Sort by score (descending) to get highest confidence first
-        const sortedMatches = [...matchesOrCandidates].sort((a, b) => (b.score || 0) - (a.score || 0));
+      if (response.type === 'answer' && response.matches) {
+        // matches can be an object with matched_rules array, or an array directly
+        if (Array.isArray(response.matches)) {
+          matchedRules = response.matches;
+        } else if (response.matches.matched_rules && Array.isArray(response.matches.matched_rules)) {
+          matchedRules = response.matches.matched_rules;
+        }
+      } else if (response.candidates) {
+        matchedRules = response.candidates;
+      }
+      
+      if (matchedRules && matchedRules.length > 0) {
+        // Sort by confidence or score (descending) to get highest confidence first
+        const sortedMatches = [...matchedRules].sort((a, b) => {
+          const aConf = a.confidence || a.score || 0;
+          const bConf = b.confidence || b.score || 0;
+          return bConf - aConf;
+        });
         const primaryCandidate = sortedMatches[0];
         const alternateCandidates = sortedMatches.slice(1);
 
         const classificationResult: ClassificationResultData = {
           hts: primaryCandidate.hts || 'N/A',
-          confidence: Math.round((primaryCandidate.score || response.max_confidence || 0) * 100),
+          confidence: Math.round((primaryCandidate.confidence || primaryCandidate.score || response.max_confidence || 0) * 100),
           description: primaryCandidate.description || '',
-          reasoning: `Based on normalized input: ${response.normalized || query}. Attributes: ${JSON.stringify(response.attributes || {})}`,
+          reasoning: primaryCandidate.rationale || `Based on normalized input: ${response.normalized || query}. Attributes: ${JSON.stringify(response.attributes || {})}`,
           parsed_data: {
             product_name: query,
             product_description: productDescription || undefined,
@@ -224,7 +237,7 @@ export function ClassificationView() {
         await saveClassificationResult(productId, runId, {
           hts_classification: classificationResult.hts,
           alternate_classification: classificationResult.alternate_classification || undefined,
-          confidence: primaryCandidate.score || response.max_confidence || undefined,
+          confidence: primaryCandidate.confidence || primaryCandidate.score || response.max_confidence || undefined,
           unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
         });
 
@@ -331,21 +344,34 @@ export function ClassificationView() {
 
       // Display candidates/matches if backend sends them
       // Handle both 'answer' type with matches and regular candidates format
-      const matchesOrCandidates = classificationResponse.type === 'answer' 
-        ? classificationResponse.matches 
-        : classificationResponse.candidates;
+      let matchedRules: Array<{hts: string; description: string; score: number; confidence?: number; rationale?: string}> = [];
       
-      if (matchesOrCandidates && matchesOrCandidates.length > 0) {
-        // Sort by score (descending) to get highest confidence first
-        const sortedMatches = [...matchesOrCandidates].sort((a, b) => (b.score || 0) - (a.score || 0));
+      if (classificationResponse.type === 'answer' && classificationResponse.matches) {
+        // matches can be an object with matched_rules array, or an array directly
+        if (Array.isArray(classificationResponse.matches)) {
+          matchedRules = classificationResponse.matches;
+        } else if (classificationResponse.matches.matched_rules && Array.isArray(classificationResponse.matches.matched_rules)) {
+          matchedRules = classificationResponse.matches.matched_rules;
+        }
+      } else if (classificationResponse.candidates) {
+        matchedRules = classificationResponse.candidates;
+      }
+      
+      if (matchedRules && matchedRules.length > 0) {
+        // Sort by confidence or score (descending) to get highest confidence first
+        const sortedMatches = [...matchedRules].sort((a, b) => {
+          const aConf = a.confidence || a.score || 0;
+          const bConf = b.confidence || b.score || 0;
+          return bConf - aConf;
+        });
         const primaryCandidate = sortedMatches[0];
         const alternateCandidates = sortedMatches.slice(1);
 
         const classificationResult: ClassificationResultData = {
           hts: primaryCandidate.hts || 'N/A',
-          confidence: Math.round((primaryCandidate.score || classificationResponse.max_confidence || 0) * 100),
+          confidence: Math.round((primaryCandidate.confidence || primaryCandidate.score || classificationResponse.max_confidence || 0) * 100),
           description: primaryCandidate.description || '',
-          reasoning: `Based on normalized input: ${classificationResponse.normalized || query}. Attributes: ${JSON.stringify(classificationResponse.attributes || {})}`,
+          reasoning: primaryCandidate.rationale || `Based on normalized input: ${classificationResponse.normalized || query}. Attributes: ${JSON.stringify(classificationResponse.attributes || {})}`,
           parsed_data: {
             product_name: query,
             product_description: productDescription || undefined,
@@ -380,7 +406,7 @@ export function ClassificationView() {
           await saveClassificationResult(productId, classificationRunId, {
             hts_classification: classificationResult.hts,
             alternate_classification: classificationResult.alternate_classification || undefined,
-            confidence: primaryCandidate.score || classificationResponse.max_confidence || undefined,
+            confidence: primaryCandidate.confidence || primaryCandidate.score || classificationResponse.max_confidence || undefined,
             unit_cost: unitCost ? parseFloat(unitCost.replace(/[^0-9.]/g, '')) : undefined,
           });
 
