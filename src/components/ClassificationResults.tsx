@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { CheckCircle, Package, MapPin, DollarSign, FileText, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle, Package, MapPin, DollarSign, FileText, AlertCircle, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+
+export interface CbpRuling {
+  ruling_number: string;
+  ruling_date: string;
+  subject: string;
+  url: string;
+  hs_codes?: string[];
+}
 
 export interface ClassificationResultData {
   hts: string;
@@ -13,7 +21,9 @@ export interface ClassificationResultData {
     hts: string;
     description: string;
     confidence: number;
+    cbp_rulings?: CbpRuling[];
   }>;
+  cbp_rulings?: CbpRuling[];
   reasoning?: string;
   rulings?: any;
   parsed_data?: {
@@ -34,6 +44,7 @@ interface ClassificationResultsProps {
 
 export function ClassificationResults({ result, onApprove, onReviewLater }: ClassificationResultsProps) {
   const [showDetails, setShowDetails] = useState(false);
+  const [expandedAlternates, setExpandedAlternates] = useState<Set<number>>(new Set());
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
@@ -73,6 +84,55 @@ export function ClassificationResults({ result, onApprove, onReviewLater }: Clas
           </div>
           <div className="text-green-800 text-2xl font-mono mb-2">{result.hts}</div>
           <p className="text-green-700 text-sm mb-4">{result.description}</p>
+          
+          {/* CBP Rulings for Primary HTS Code */}
+          {result.cbp_rulings && result.cbp_rulings.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-green-200">
+              <h5 className="text-green-900 font-semibold mb-3 flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                CBP Rulings ({result.cbp_rulings.length})
+              </h5>
+              <div className="space-y-3">
+                {result.cbp_rulings.map((ruling, idx) => (
+                  <div key={idx} className="bg-white rounded-lg p-4 border border-green-200">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-green-900 font-semibold text-sm">{ruling.ruling_number}</span>
+                          {ruling.ruling_date && (
+                            <span className="text-green-600 text-xs">
+                              {new Date(ruling.ruling_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-green-800 text-sm font-medium mb-2">{ruling.subject}</p>
+                        {ruling.hs_codes && ruling.hs_codes.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {ruling.hs_codes.map((code, codeIdx) => (
+                              <span key={codeIdx} className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-mono rounded">
+                                {code}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {ruling.url && (
+                        <a
+                          href={ruling.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ml-2 p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded transition-colors"
+                          title="View ruling on CBP website"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           
           {result.tariff_rate !== null && result.tariff_rate !== undefined && (
             <div className="grid grid-cols-3 gap-4 pt-4 border-t border-green-200">
@@ -187,21 +247,105 @@ export function ClassificationResults({ result, onApprove, onReviewLater }: Clas
             </div>
             {result.alternate_classifications && result.alternate_classifications.length > 0 ? (
               <div className="space-y-3">
-                {result.alternate_classifications.map((alt, index) => (
-                  <div key={index} className="bg-white rounded-lg p-3 border border-amber-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-amber-800 font-mono font-semibold">{alt.hts}</div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        alt.confidence >= 85 
-                          ? 'bg-amber-100 text-amber-700' 
-                          : 'bg-amber-50 text-amber-600'
-                      }`}>
-                        {alt.confidence}% Confidence
-                      </span>
+                {result.alternate_classifications.map((alt, index) => {
+                  const isExpanded = expandedAlternates.has(index);
+                  const hasRulings = alt.cbp_rulings && alt.cbp_rulings.length > 0;
+                  
+                  return (
+                    <div key={index} className="bg-white rounded-lg border border-amber-200">
+                      <div className="p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-amber-800 font-mono font-semibold">{alt.hts}</div>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              alt.confidence >= 85 
+                                ? 'bg-amber-100 text-amber-700' 
+                                : 'bg-amber-50 text-amber-600'
+                            }`}>
+                              {alt.confidence}% Confidence
+                            </span>
+                            {hasRulings && (
+                              <button
+                                onClick={() => {
+                                  const newExpanded = new Set(expandedAlternates);
+                                  if (isExpanded) {
+                                    newExpanded.delete(index);
+                                  } else {
+                                    newExpanded.add(index);
+                                  }
+                                  setExpandedAlternates(newExpanded);
+                                }}
+                                className="p-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded transition-colors"
+                                title={isExpanded ? "Hide rulings" : "Show rulings"}
+                              >
+                                {isExpanded ? (
+                                  <ChevronUp className="w-4 h-4" />
+                                ) : (
+                                  <ChevronDown className="w-4 h-4" />
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-amber-700 text-sm">{alt.description}</p>
+                        {hasRulings && (
+                          <div className="mt-2 text-xs text-amber-600">
+                            {alt.cbp_rulings!.length} ruling{alt.cbp_rulings!.length !== 1 ? 's' : ''} available
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Expandable Rulings Section */}
+                      {isExpanded && hasRulings && (
+                        <div className="border-t border-amber-200 bg-amber-25 p-4">
+                          <h6 className="text-amber-900 font-semibold mb-3 flex items-center gap-2 text-sm">
+                            <FileText className="w-4 h-4" />
+                            CBP Rulings ({alt.cbp_rulings!.length})
+                          </h6>
+                          <div className="space-y-3">
+                            {alt.cbp_rulings!.map((ruling, rulingIdx) => (
+                              <div key={rulingIdx} className="bg-white rounded-lg p-3 border border-amber-200">
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="text-amber-900 font-semibold text-sm">{ruling.ruling_number}</span>
+                                      {ruling.ruling_date && (
+                                        <span className="text-amber-600 text-xs">
+                                          {new Date(ruling.ruling_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-amber-800 text-sm font-medium mb-2">{ruling.subject}</p>
+                                    {ruling.hs_codes && ruling.hs_codes.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 mb-2">
+                                        {ruling.hs_codes.map((code, codeIdx) => (
+                                          <span key={codeIdx} className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-mono rounded">
+                                            {code}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                  {ruling.url && (
+                                    <a
+                                      href={ruling.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="ml-2 p-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded transition-colors"
+                                      title="View ruling on CBP website"
+                                    >
+                                      <ExternalLink className="w-4 h-4" />
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <p className="text-amber-700 text-sm">{alt.description}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : result.alternate_classification ? (
               <div className="text-amber-800 font-mono">{result.alternate_classification}</div>

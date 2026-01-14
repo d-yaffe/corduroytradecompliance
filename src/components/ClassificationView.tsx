@@ -176,7 +176,20 @@ export function ClassificationView() {
 
       // Display candidates/matches if backend sends them
       // Handle both 'answer' type with matches and regular candidates format
-      let matchedRules: Array<{hts: string; description: string; score: number; confidence?: number; rationale?: string}> = [];
+      let matchedRules: Array<{
+        hts: string; 
+        description: string; 
+        score: number; 
+        confidence?: number; 
+        rationale?: string;
+        cbp_rulings?: Array<{
+          ruling_number: string;
+          ruling_date: string;
+          subject: string;
+          url: string;
+          hs_codes?: string[];
+        }>;
+      }> = [];
       
       if (response.type === 'answer' && response.matches) {
         // matches can be an object with matched_rules array, or an array directly
@@ -204,6 +217,7 @@ export function ClassificationView() {
           confidence: Math.round((primaryCandidate.confidence || primaryCandidate.score || response.max_confidence || 0) * 100),
           description: primaryCandidate.description || '',
           reasoning: primaryCandidate.rationale || `Based on normalized input: ${response.normalized || query}. Attributes: ${JSON.stringify(response.attributes || {})}`,
+          cbp_rulings: primaryCandidate.cbp_rulings || undefined,
           parsed_data: {
             product_name: query,
             product_description: productDescription || undefined,
@@ -214,12 +228,13 @@ export function ClassificationView() {
           },
         };
 
-        // Store all alternate classifications with confidence and descriptions
+        // Store all alternate classifications with confidence, descriptions, and rulings
         if (alternateCandidates.length > 0) {
           classificationResult.alternate_classifications = alternateCandidates.map(alt => ({
             hts: alt.hts || 'N/A',
             description: alt.description || '',
             confidence: Math.round((alt.confidence || alt.score || 0) * 100),
+            cbp_rulings: alt.cbp_rulings || undefined,
           }));
           // Keep backward compatibility with alternate_classification
           classificationResult.alternate_classification = alternateCandidates[0].hts;
@@ -350,7 +365,20 @@ export function ClassificationView() {
 
       // Display candidates/matches if backend sends them
       // Handle both 'answer' type with matches and regular candidates format
-      let matchedRules: Array<{hts: string; description: string; score: number; confidence?: number; rationale?: string}> = [];
+      let matchedRules: Array<{
+        hts: string; 
+        description: string; 
+        score: number; 
+        confidence?: number; 
+        rationale?: string;
+        cbp_rulings?: Array<{
+          ruling_number: string;
+          ruling_date: string;
+          subject: string;
+          url: string;
+          hs_codes?: string[];
+        }>;
+      }> = [];
       
       if (classificationResponse.type === 'answer' && classificationResponse.matches) {
         // matches can be an object with matched_rules array, or an array directly
@@ -378,6 +406,7 @@ export function ClassificationView() {
           confidence: Math.round((primaryCandidate.confidence || primaryCandidate.score || classificationResponse.max_confidence || 0) * 100),
           description: primaryCandidate.description || '',
           reasoning: primaryCandidate.rationale || `Based on normalized input: ${classificationResponse.normalized || query}. Attributes: ${JSON.stringify(classificationResponse.attributes || {})}`,
+          cbp_rulings: primaryCandidate.cbp_rulings || undefined,
           parsed_data: {
             product_name: query,
             product_description: productDescription || undefined,
@@ -388,12 +417,13 @@ export function ClassificationView() {
           },
         };
 
-        // Store all alternate classifications with confidence and descriptions
+        // Store all alternate classifications with confidence, descriptions, and rulings
         if (alternateCandidates.length > 0) {
           classificationResult.alternate_classifications = alternateCandidates.map(alt => ({
             hts: alt.hts || 'N/A',
             description: alt.description || '',
             confidence: Math.round((alt.confidence || alt.score || 0) * 100),
+            cbp_rulings: alt.cbp_rulings || undefined,
           }));
           // Keep backward compatibility with alternate_classification
           classificationResult.alternate_classification = alternateCandidates[0].hts;
