@@ -32,6 +32,7 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
   const [primaryUseProvided, setPrimaryUseProvided] = useState(false);
   const [certificationProvided, setCertificationProvided] = useState(false);
   const [resolvedIssues, setResolvedIssues] = useState<string[]>([]);
+  // Using available data: product.productName, product.confidence, product.hts from database
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
@@ -40,6 +41,8 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
     },
     {
       role: 'assistant',
+      // HARDCODED: Chat message content - Should be dynamic based on product.reason or fetched from database
+      // TODO: Make message content dynamic based on actual exception reason
       text: `The main challenge here is determining the product's primary function. I've suggested HTS ${product.hts}, but there are a few other possibilities depending on specific details. Feel free to ask me questions or upload any supporting documents you have!`,
       timestamp: 'Just now'
     }
@@ -49,6 +52,8 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // HARDCODED: Alternate classifications - Should come from database field: user_product_classification_results.alternate_classifications (jsonb)
+  // TODO: Fetch from database when alternate_classifications field is added
   const alternatives = [
     { 
       hts: '9102.11.0000', 
@@ -76,7 +81,8 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
   // Filter out the proposed classification from alternatives
   const filteredAlternatives = alternatives.filter(alt => alt.hts !== product.hts);
 
-  // AI Explanation of low confidence
+  // HARDCODED: Confidence analysis issues - Should come from database or be dynamically generated based on product.reason
+  // TODO: Generate dynamically based on product.reason or fetch from classification_issues table when created
   const confidenceAnalysis = {
     primaryIssues: [
       {
@@ -116,6 +122,8 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
     let confidenceBoost = 0;
     const newlyResolved = newIssuesResolved.filter(issue => !resolvedIssues.includes(issue));
     
+    // HARDCODED: Confidence boost values - Should be configurable or based on issue severity from database
+    // TODO: Make configurable or fetch from database when classification_issues table is created
     newlyResolved.forEach(issue => {
       if (issue === 'primary_use') confidenceBoost += 12;
       if (issue === 'materials') confidenceBoost += 8;
@@ -198,7 +206,8 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
       updateConfidenceScore(newIssuesResolved);
     }
 
-    // Simulate AI response based on context
+    // HARDCODED: AI response templates - Should use actual AI service or be dynamic based on product context
+    // TODO: Integrate with AI service or make responses dynamic based on product data
     setTimeout(() => {
       let aiResponse = '';
       
@@ -209,6 +218,8 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
       } else if (lowerInput.includes('medical') || lowerInput.includes('fda') || lowerInput.includes('certified')) {
         aiResponse = "This is a game-changer! Medical certification shifts the classification significantly. If you have FDA registration or CE medical device certification, it strengthens the case for 9031.80.8000 (measuring instruments) at 1.7% instead of 9.8%. Some medical devices even qualify for duty-free treatment. Do you have certification documents you can share?";
       } else if (lowerInput.includes('tariff') || lowerInput.includes('duty') || lowerInput.includes('rate') || lowerInput.includes('save') || lowerInput.includes('cost')) {
+        // HARDCODED: Tariff comparison - Should use actual tariff rates from database or alternatives data
+        // TODO: Use actual tariff rates from product.tariff and alternatives data
         aiResponse = `Let me break down the financial impact for you:\n\n📊 HTS 9102.11.0000 (Watches): 9.8% duty\n📊 HTS 9031.80.8000 (Instruments): 1.7% duty\n📊 HTS 8517.62.0050 (Comm devices): 0% duty\n\nIf your shipment value is $11,250, that's a difference of $920 vs $191 vs $0 in duties. Getting this classification right really matters for your bottom line!`;
       } else if (lowerInput.includes('help') || lowerInput.includes('what do you need') || lowerInput.includes('how can')) {
         aiResponse = "I'm here to help! Here's what would help me increase the confidence score:\n\n1. Product specs or data sheet\n2. How it's marketed (watch vs health device)\n3. Material composition details\n4. Any certifications (FDA, CE, etc.)\n\nYou can either type the details or upload documents using the button below. What works best for you?";
@@ -270,6 +281,8 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
         updateConfidenceScore(newIssuesResolved);
       }
 
+      // HARDCODED: Document analysis response - Should use actual document content analysis or AI processing
+      // TODO: Implement actual document analysis or integrate with AI service
       const assistantMessage: ChatMessage = {
         role: 'assistant',
         text: `Excellent! I've analyzed the document${files.length > 1 ? 's' : ''} and found some key details:\n\n✅ Product marketed as "Smart Health Watch"\n✅ Case: Aluminum alloy (base metal, not precious)\n✅ Primary features: Heart rate, SpO2, sleep tracking (FDA registered Class II)\n✅ Timekeeping listed as secondary/convenience feature\n\nThis evidence strongly supports classifying under 9031.80.8000 (Measuring instruments) rather than 9102 (Watches):\n• Duty drops from 9.8% → 1.7%\n• Classification now has high confidence!\n• Saves you approximately $729 on this shipment\n\nWould you like me to update the recommended classification?`,
@@ -503,6 +516,8 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
               >
                 <div className="mb-3">
                   <div className="text-blue-600 text-sm mb-1">{product.hts}</div>
+                  {/* HARDCODED: HTS description - Should come from database field: user_product_classification_results.hts_description or hts_code_lookup table */}
+                  {/* TODO: Fetch from database when hts_description field is added or use hts_code_lookup table */}
                   <div className="text-slate-700 text-xs mb-2">
                     Wrist watches, electrically operated, mechanical display only
                   </div>
@@ -525,6 +540,8 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
                   </div>
                 </div>
 
+                {/* HARDCODED: Classification hierarchy - Should come from hts_code_lookup table (chapter, heading, subheading) */}
+                {/* TODO: Fetch from hts_code_lookup table when created, or from database field if added */}
                 <div className="pt-3 border-t border-slate-200">
                   <div className="text-slate-900 text-sm mb-2">Classification Hierarchy</div>
                   <div className="space-y-1.5 text-xs">
@@ -564,6 +581,8 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
                         <span className="text-slate-900 text-sm block mb-2">{alt.hts}</span>
                         <p className="text-slate-700 text-xs mb-2">{alt.description}</p>
                         
+                        {/* HARDCODED: Alternative classification hierarchy - Should come from hts_code_lookup table or alternate_classifications data */}
+                        {/* TODO: Fetch from database when alternate_classifications includes hierarchy or use hts_code_lookup table */}
                         <div className="space-y-1 text-xs mb-2">
                           <div className="flex items-start gap-2">
                             <span className="text-slate-600 min-w-[55px]">Chapter</span>
@@ -613,6 +632,8 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
                     <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm">1</div>
                     <h4 className="text-slate-900">Classification Decision</h4>
                   </div>
+                  {/* HARDCODED: Classification decision reasoning - Should come from database field: user_product_classification_results.reasoning */}
+                  {/* TODO: Fetch from database when reasoning field is added */}
                   <div className="ml-8 p-4 bg-slate-50 rounded-lg">
                     <p className="text-slate-700 text-sm mb-3">
                       <strong>HTS Code {selectedHts}</strong> was selected based on the product's primary function, material composition, and physical characteristics.
@@ -626,7 +647,8 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
                   </div>
                 </div>
 
-                {/* General Rules of Interpretation */}
+                {/* HARDCODED: General Rules of Interpretation - Should come from database field: user_product_classification_results.reasoning or be dynamically generated */}
+                {/* TODO: Generate dynamically or fetch from database when reasoning field includes GRI analysis */}
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm">2</div>
@@ -715,6 +737,8 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
                     <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm">6</div>
                     <h4 className="text-slate-900">Supporting Documentation</h4>
                   </div>
+                  {/* HARDCODED: Supporting documentation list - Should come from database table: user_product_documents */}
+                  {/* TODO: Fetch actual documents from user_product_documents table for this product */}
                   <div className="ml-8 space-y-2">
                     <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                       <p className="text-sm text-blue-900">✓ Product specification sheet</p>
