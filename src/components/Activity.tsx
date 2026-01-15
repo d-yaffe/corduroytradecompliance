@@ -87,8 +87,9 @@ export function Activity() {
 
         // Create maps for quick lookup
         const runMap = new Map(runs.map(r => [r.id, r]));
+        const allHistory = historyResponse.data || [];
         const approvedMap = new Map(
-          (allHistory || [])
+          allHistory
             .filter(h => h.approved === true)
             .map(h => [h.classification_result_id, true])
         );
