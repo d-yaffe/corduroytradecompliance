@@ -446,7 +446,7 @@ export async function getProductProfiles(userId: string): Promise<ProductProfile
         .eq('user_id', userId),
       supabase
         .from('user_product_classification_results')
-        .select('id, hts_classification, alternate_classification, confidence, classified_at, tariff_rate, tariff_amount, total_cost, unit_cost, reasoning, rationale')
+        .select('id, hts_classification, alternate_classification, confidence, classified_at, tariff_rate, tariff_amount, total_cost, unit_cost')
         .in('id', resultIds)
     ]);
 
