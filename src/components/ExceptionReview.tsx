@@ -407,6 +407,7 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
                 <div className="flex items-center gap-2">
                   <Lightbulb className="w-5 h-5 text-blue-600" />
                   <h3 className="text-slate-900">AI Analysis</h3>
+                  <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded border border-red-300">HARDCODED</span>
                 </div>
               </div>
               
@@ -518,8 +519,9 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
                   <div className="text-blue-600 text-sm mb-1">{product.hts}</div>
                   {/* HARDCODED: HTS description - Should come from database field: user_product_classification_results.hts_description or hts_code_lookup table */}
                   {/* TODO: Fetch from database when hts_description field is added or use hts_code_lookup table */}
-                  <div className="text-slate-700 text-xs mb-2">
-                    Wrist watches, electrically operated, mechanical display only
+                  <div className="text-slate-700 text-xs mb-2 flex items-center gap-2">
+                    <span>Wrist watches, electrically operated, mechanical display only</span>
+                    <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded border border-red-300">HARDCODED</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className={`px-2 py-1 text-xs rounded ${
@@ -543,7 +545,10 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
                 {/* HARDCODED: Classification hierarchy - Should come from hts_code_lookup table (chapter, heading, subheading) */}
                 {/* TODO: Fetch from hts_code_lookup table when created, or from database field if added */}
                 <div className="pt-3 border-t border-slate-200">
-                  <div className="text-slate-900 text-sm mb-2">Classification Hierarchy</div>
+                  <div className="text-slate-900 text-sm mb-2 flex items-center gap-2">
+                    <span>Classification Hierarchy</span>
+                    <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded border border-red-300">HARDCODED</span>
+                  </div>
                   <div className="space-y-1.5 text-xs">
                     <div className="flex items-start gap-2">
                       <span className="text-slate-600 min-w-[80px]">Chapter</span>
@@ -564,7 +569,10 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
 
             {/* Alternative Classifications */}
             <div className="bg-white border border-slate-200 rounded-lg p-4">
-              <h3 className="text-slate-900 mb-3">Alternative Classifications</h3>
+              <div className="flex items-center gap-2 mb-3">
+                <h3 className="text-slate-900">Alternative Classifications</h3>
+                <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded border border-red-300">HARDCODED</span>
+              </div>
               <div className="space-y-2">
                 {filteredAlternatives.map((alt, index) => (
                   <div 
@@ -584,6 +592,9 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
                         {/* HARDCODED: Alternative classification hierarchy - Should come from hts_code_lookup table or alternate_classifications data */}
                         {/* TODO: Fetch from database when alternate_classifications includes hierarchy or use hts_code_lookup table */}
                         <div className="space-y-1 text-xs mb-2">
+                          <div className="mb-1">
+                            <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded border border-red-300">HARDCODED</span>
+                          </div>
                           <div className="flex items-start gap-2">
                             <span className="text-slate-600 min-w-[55px]">Chapter</span>
                             <span className="text-slate-700">{index === 0 ? '91 — Clocks and watches' : index === 1 ? '90 — Optical, measuring, checking instruments' : '85 — Electrical machinery'}</span>
@@ -621,7 +632,10 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
             {/* Full Classification Reasoning */}
             <div className="border border-slate-200 rounded-xl overflow-hidden">
               <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-5 py-3 border-b border-indigo-100">
-                <h3 className="text-indigo-900">Classification Reasoning for Customs Validation</h3>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-indigo-900">Classification Reasoning for Customs Validation</h3>
+                  <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded border border-red-300">HARDCODED</span>
+                </div>
                 <p className="text-indigo-700 text-sm">Detailed justification for HTS {selectedHts}</p>
               </div>
               
@@ -736,6 +750,7 @@ export function ExceptionReview({ product, onClose, onApprove, onReject }: Excep
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm">6</div>
                     <h4 className="text-slate-900">Supporting Documentation</h4>
+                    <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded border border-red-300">HARDCODED</span>
                   </div>
                   {/* HARDCODED: Supporting documentation list - Should come from database table: user_product_documents */}
                   {/* TODO: Fetch actual documents from user_product_documents table for this product */}
