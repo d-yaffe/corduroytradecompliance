@@ -29,13 +29,14 @@ export function AddProductModal({ onClose, onSave, editingProduct }: AddProductM
   const handleClassify = () => {
     setIsClassifying(true);
 
-    // Simulate AI classification
+    // HARDCODED: Simulated AI classification - Should call actual classification API
+    // TODO: Replace with actual API call to classifyProduct() from supabaseFunctions
     setTimeout(() => {
       setClassification({
-        hts: '8517.62.0050',
-        confidence: 96,
-        description: 'Machines for the reception, conversion and transmission or regeneration of voice, images or other data',
-        tariff: '0% (Free)'
+        hts: '8517.62.0050', // HARDCODED
+        confidence: 96, // HARDCODED
+        description: 'Machines for the reception, conversion and transmission or regeneration of voice, images or other data', // HARDCODED
+        tariff: '0% (Free)' // HARDCODED
       });
       setIsClassifying(false);
       setStep('classify');
@@ -154,6 +155,11 @@ export function AddProductModal({ onClose, onSave, editingProduct }: AddProductM
 
                   <div>
                     <label className="block text-slate-700 mb-2">Country of Origin *</label>
+                    {/* HARDCODED: Country list - Should fetch from database or use a country API */}
+                    {/* TODO: Replace with dynamic country list from database or country API */}
+                    <div className="mb-1">
+                      <span className="px-2 py-1 bg-red-200 text-red-800 text-xs font-semibold rounded border-2 border-red-400">⚠️ HARDCODED</span>
+                    </div>
                     <select
                       value={formData.origin}
                       onChange={(e) => setFormData({ ...formData, origin: e.target.value })}
@@ -219,7 +225,10 @@ export function AddProductModal({ onClose, onSave, editingProduct }: AddProductM
               {/* Classification Result */}
               <div className="bg-green-50 border-2 border-green-300 rounded-lg p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-slate-900">AI Classification Result</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-slate-900">AI Classification Result</h3>
+                    <span className="px-2 py-1 bg-red-200 text-red-800 text-xs font-semibold rounded border-2 border-red-400">⚠️ HARDCODED</span>
+                  </div>
                   <div className="flex items-center gap-2">
                     <span className="text-green-600 text-sm">Confidence:</span>
                     <span className="text-green-900">{classification && classification.confidence ? classification.confidence : 0}%</span>
