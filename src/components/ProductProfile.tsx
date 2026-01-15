@@ -26,6 +26,7 @@ interface Product {
   totalCost?: number | null;
   alternateClassification?: string | null;
   unitCost?: number | null;
+  reasoning?: string | null; // Classification reasoning from DB
 }
 
 export function ProductProfile() {

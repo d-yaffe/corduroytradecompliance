@@ -165,7 +165,6 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                 month: 'long', 
                 day: 'numeric' 
               })}</span>
-              <span className="px-1.5 py-0.5 bg-green-200 text-green-800 text-xs rounded border border-green-400">DB</span>
             </div>
           </div>
 
@@ -285,31 +284,38 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
             </div>
             
             <div className="p-5 space-y-5 bg-white">
-              {/* HARDCODED: Classification Decision reasoning text - No field in DB */}
-              {/* TODO: Fetch from reasoning or rationale field in user_product_classification_results */}
+              {/* Classification Decision - Uses reasoning from DB if available */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm">1</div>
                   <h4 className="text-slate-900">Classification Decision</h4>
-                  <span className="px-1 py-0.5 bg-red-100 text-red-600 text-[10px] rounded border border-red-300">HARDCODED</span>
+                  {!product.reasoning && (
+                    <span className="px-1 py-0.5 bg-red-100 text-red-600 text-[10px] rounded border border-red-300">HARDCODED</span>
+                  )}
                 </div>
                 <div className="ml-8 p-4 bg-slate-50 rounded-lg">
-                  <p className="text-slate-700 text-sm mb-3">
-                    <strong>HTS Code {product.hts}</strong> was selected based on the product's primary function, material composition, and physical characteristics.
-                  </p>
-                  <p className="text-slate-600 text-sm">
-                    This classification aligns with the Harmonized Tariff Schedule of the United States (HTSUS) Chapter {product.hts.substring(0, 2)} which covers: 
-                    {product.hts.startsWith('85') && ' Electrical machinery and equipment and parts thereof.'}
-                    {product.hts.startsWith('61') && ' Articles of apparel and clothing accessories, knitted or crocheted.'}
-                    {product.hts.startsWith('94') && ' Furniture; bedding, mattresses, cushions and similar stuffed furnishings; lamps and lighting fittings.'}
-                    {product.hts.startsWith('73') && ' Articles of iron or steel.'}
-                    {product.hts.startsWith('42') && ' Articles of leather; saddlery and harness; travel goods, handbags and similar containers.'}
-                    {product.hts.startsWith('91') && ' Clocks and watches and parts thereof.'}
-                    {product.hts.startsWith('55') && ' Man-made staple fibers.'}
-                    {product.hts.startsWith('69') && ' Ceramic products.'}
-                    {product.hts.startsWith('95') && ' Toys, games and sports equipment; parts and accessories thereof.'}
-                    {product.hts.startsWith('44') && ' Wood and articles of wood; wood charcoal.'}
-                  </p>
+                  {product.reasoning ? (
+                    <p className="text-slate-700 text-sm whitespace-pre-wrap">{product.reasoning}</p>
+                  ) : (
+                    <>
+                      <p className="text-slate-700 text-sm mb-3">
+                        <strong>HTS Code {product.hts}</strong> was selected based on the product's primary function, material composition, and physical characteristics.
+                      </p>
+                      <p className="text-slate-600 text-sm">
+                        This classification aligns with the Harmonized Tariff Schedule of the United States (HTSUS) Chapter {product.hts.substring(0, 2)} which covers: 
+                        {product.hts.startsWith('85') && ' Electrical machinery and equipment and parts thereof.'}
+                        {product.hts.startsWith('61') && ' Articles of apparel and clothing accessories, knitted or crocheted.'}
+                        {product.hts.startsWith('94') && ' Furniture; bedding, mattresses, cushions and similar stuffed furnishings; lamps and lighting fittings.'}
+                        {product.hts.startsWith('73') && ' Articles of iron or steel.'}
+                        {product.hts.startsWith('42') && ' Articles of leather; saddlery and harness; travel goods, handbags and similar containers.'}
+                        {product.hts.startsWith('91') && ' Clocks and watches and parts thereof.'}
+                        {product.hts.startsWith('55') && ' Man-made staple fibers.'}
+                        {product.hts.startsWith('69') && ' Ceramic products.'}
+                        {product.hts.startsWith('95') && ' Toys, games and sports equipment; parts and accessories thereof.'}
+                        {product.hts.startsWith('44') && ' Wood and articles of wood; wood charcoal.'}
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -353,10 +359,8 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                   <p className="text-slate-700 text-sm mb-2"><strong>Declared Materials:</strong> {product.materials}</p>
                   {/* HARDCODED: Material composition analysis text - No field in DB for analysis text */}
                   {/* TODO: Fetch from material_analysis field or reasoning field */}
-                  <div className="mb-2">
-                    <span className="px-1 py-0.5 bg-red-100 text-red-600 text-[10px] rounded border border-red-300">HARDCODED</span>
-                  </div>
                   <p className="text-slate-600 text-sm">
+                    <span className="px-1 py-0.5 bg-red-100 text-red-600 text-[10px] rounded border border-red-300">HARDCODED</span>{' '}
                     Material composition has been verified to meet the requirements for classification under this HTS code. The predominant material determines the appropriate subheading according to Section Notes and Chapter Notes.
                   </p>
                 </div>
@@ -372,10 +376,8 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                   <p className="text-slate-700 text-sm mb-2"><strong>Origin:</strong> {product.origin}</p>
                   {/* HARDCODED: Country of origin impact text and tariff rate info - No field in DB for this analysis */}
                   {/* TODO: Fetch from origin_analysis field or reasoning field */}
-                  <div className="mb-2">
-                    <span className="px-1 py-0.5 bg-red-100 text-red-600 text-[10px] rounded border border-red-300">HARDCODED</span>
-                  </div>
                   <p className="text-slate-600 text-sm mb-3">
+                    <span className="px-1 py-0.5 bg-red-100 text-red-600 text-[10px] rounded border border-red-300">HARDCODED</span>{' '}
                     Country of origin affects duty rates and trade agreement eligibility. For products from {product.origin}, the following apply:
                   </p>
                   <div className="space-y-2">
