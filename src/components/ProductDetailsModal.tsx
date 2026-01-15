@@ -45,7 +45,11 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                 <div className="text-green-800 text-lg mb-3">HTS Code: {product.hts}</div>
                 
                 {/* HARDCODED: HTS Chapter/Heading/Subheading descriptions - No fields in DB for these descriptions */}
+                {/* TODO: Fetch from hts_code_lookup table when created, or from hts_description field if added */}
                 <div className="space-y-1 text-xs mb-3">
+                  <div className="mb-1">
+                    <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded border border-red-300">HARDCODED</span>
+                  </div>
                   <div className="flex items-start gap-2">
                     <span className="text-green-700 min-w-[60px]">Chapter</span>
                     <span className="text-green-800">
@@ -190,7 +194,11 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                 <div>
                   <div className="text-slate-900 text-sm">HTS {product.hts}</div>
                   {/* HARDCODED: "Classified by AI Agent" - No field in DB for classifier name/type */}
-                  <div className="text-slate-600 text-xs">Classified by AI Agent • Confidence: {product.confidence}%</div>
+                  {/* TODO: Add classifier_type or classified_by field to user_product_classification_results */}
+                  <div className="text-slate-600 text-xs flex items-center gap-2">
+                    <span>Classified by AI Agent • Confidence: {product.confidence}%</span>
+                    <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded border border-red-300">HARDCODED</span>
+                  </div>
                 </div>
                 <div className="text-slate-600 text-sm">{new Date(product.lastUpdated).toLocaleDateString()}</div>
               </div>
@@ -201,16 +209,21 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
           {/* Full Classification Reasoning - Always Visible */}
           <div className="border border-slate-200 rounded-xl overflow-hidden">
             <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-5 py-3 border-b border-indigo-100">
-              <h3 className="text-indigo-900">Classification Reasoning for Customs Validation</h3>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-indigo-900">Classification Reasoning for Customs Validation</h3>
+                <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded border border-red-300">HARDCODED</span>
+              </div>
               <p className="text-indigo-700 text-sm">Detailed justification for HTS {product.hts}</p>
             </div>
             
             <div className="p-5 space-y-5 bg-white">
               {/* HARDCODED: Classification Decision reasoning text - No field in DB */}
+              {/* TODO: Fetch from reasoning or rationale field in user_product_classification_results */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm">1</div>
                   <h4 className="text-slate-900">Classification Decision</h4>
+                  <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded border border-red-300">HARDCODED</span>
                 </div>
                 <div className="ml-8 p-4 bg-slate-50 rounded-lg">
                   <p className="text-slate-700 text-sm mb-3">
@@ -233,10 +246,12 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
               </div>
 
               {/* HARDCODED: GRI rules text - No field in DB for GRI rules applied */}
+              {/* TODO: Fetch from gri_rules_applied field (JSONB) or reasoning field */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm">2</div>
                   <h4 className="text-slate-900">General Rules of Interpretation (GRI)</h4>
+                  <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded border border-red-300">HARDCODED</span>
                 </div>
                 <div className="ml-8 space-y-2">
                   <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
@@ -269,6 +284,10 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                 <div className="ml-8 p-4 bg-slate-50 rounded-lg">
                   <p className="text-slate-700 text-sm mb-2"><strong>Declared Materials:</strong> {product.materials}</p>
                   {/* HARDCODED: Material composition analysis text - No field in DB for analysis text */}
+                  {/* TODO: Fetch from material_analysis field or reasoning field */}
+                  <div className="mb-1">
+                    <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded border border-red-300">HARDCODED</span>
+                  </div>
                   <p className="text-slate-600 text-sm">
                     Material composition has been verified to meet the requirements for classification under this HTS code. The predominant material determines the appropriate subheading according to Section Notes and Chapter Notes.
                   </p>
@@ -284,6 +303,10 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                 <div className="ml-8 p-4 bg-slate-50 rounded-lg">
                   <p className="text-slate-700 text-sm mb-2"><strong>Origin:</strong> {product.origin}</p>
                   {/* HARDCODED: Country of origin impact text and tariff rate info - No field in DB for this analysis */}
+                  {/* TODO: Fetch from origin_analysis field or reasoning field */}
+                  <div className="mb-1">
+                    <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded border border-red-300">HARDCODED</span>
+                  </div>
                   <p className="text-slate-600 text-sm mb-3">
                     Country of origin affects duty rates and trade agreement eligibility. For products from {product.origin}, the following apply:
                   </p>
@@ -297,22 +320,27 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                       </span>
                     </div>
                     {/* HARDCODED: "Special tariff programs may apply" - No field in DB for special tariff program info */}
+                    {/* TODO: Fetch from special_tariff_programs field or trade_agreements field */}
                     <div className="flex items-center gap-2 text-sm">
                       <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
                       <span className="text-slate-600">Special tariff programs may apply</span>
+                      <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded border border-red-300">HARDCODED</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* HARDCODED: Alternative Classifications Considered - Uses alternate_classification from DB but reasoning text is hardcoded */}
+              {/* TODO: Fetch from alternate_classifications field (JSONB array) with rejection reasons */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm">5</div>
                   <h4 className="text-slate-900">Alternative Classifications Considered</h4>
+                  <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded border border-red-300">HARDCODED</span>
                 </div>
                 <div className="ml-8 space-y-2">
                   {/* HARDCODED: Alternative classification reasoning - No field in DB for rejection reasons */}
+                  {/* TODO: Use alternate_classifications field (JSONB array) with rejection reasons */}
                   <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
                     <p className="text-sm text-slate-700 mb-1"><strong>Alternative 1:</strong> HTS {product.hts.substring(0, 4)}.XX.XXXX</p>
                     <p className="text-xs text-slate-600">Rejected: Product characteristics do not match primary function requirements</p>
@@ -325,10 +353,12 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
               </div>
 
               {/* HARDCODED: Supporting Documentation list - No field in DB for document list */}
+              {/* TODO: Fetch actual documents from user_product_documents table for this product */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm">6</div>
                   <h4 className="text-slate-900">Supporting Documentation</h4>
+                  <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded border border-red-300">HARDCODED</span>
                 </div>
                 <div className="ml-8 space-y-2">
                   <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -347,7 +377,11 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
               </div>
 
               {/* HARDCODED: Compliance Notes text - No field in DB for compliance notes */}
+              {/* TODO: Fetch from compliance_notes field or make configurable */}
               <div className="border-t border-slate-200 pt-4">
+                <div className="mb-2">
+                  <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded border border-red-300">HARDCODED</span>
+                </div>
                 <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
                   <div className="flex items-start gap-2">
                     <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
