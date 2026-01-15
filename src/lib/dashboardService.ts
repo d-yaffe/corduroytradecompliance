@@ -541,7 +541,6 @@ export async function getProductProfiles(userId: string): Promise<ProductProfile
           totalCost: totalCost,
           alternateClassification: alternateClassification,
           unitCost: unitCostValue,
-          reasoning: (result.reasoning || result.rationale) || null, // Add reasoning/rationale from DB
         };
       })
       .filter((p): p is ProductProfile => p !== null);
