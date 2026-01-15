@@ -158,7 +158,7 @@ export function AddProductModal({ onClose, onSave, editingProduct }: AddProductM
                     {/* HARDCODED: Country list - Should fetch from database or use a country API */}
                     {/* TODO: Replace with dynamic country list from database or country API */}
                     <div className="mb-1">
-                      <span className="px-2 py-1 bg-red-200 text-red-800 text-xs font-semibold rounded border-2 border-red-400">⚠️ HARDCODED</span>
+                      <span className="px-1 py-0.5 bg-red-100 text-red-600 text-[10px] rounded border border-red-300">HARDCODED</span>
                     </div>
                     <select
                       value={formData.origin}
@@ -227,7 +227,7 @@ export function AddProductModal({ onClose, onSave, editingProduct }: AddProductM
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <h3 className="text-slate-900">AI Classification Result</h3>
-                    <span className="px-2 py-1 bg-red-200 text-red-800 text-xs font-semibold rounded border-2 border-red-400">⚠️ HARDCODED</span>
+                    <span className="px-1 py-0.5 bg-red-100 text-red-600 text-[10px] rounded border border-red-300">HARDCODED</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-green-600 text-sm">Confidence:</span>

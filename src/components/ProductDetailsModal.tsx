@@ -98,14 +98,13 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                 <div className="text-green-900 text-sm mb-2">Current Classification</div>
                 <div className="text-green-800 text-lg mb-3 flex items-center gap-2">
                   <span>HTS Code: {product.hts}</span>
-                  <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded border border-green-300">FROM DATABASE</span>
                 </div>
                 
                 {/* HARDCODED: HTS Chapter/Heading/Subheading descriptions - No fields in DB for these descriptions */}
                 {/* TODO: Fetch from hts_code_lookup table when created, or from hts_description field if added */}
                 <div className="space-y-1 text-xs mb-3">
                   <div className="mb-2">
-                    <span className="px-2 py-1 bg-red-200 text-red-800 text-xs font-semibold rounded border-2 border-red-400">⚠️ HARDCODED - NOT FROM DATABASE</span>
+                    <span className="px-1 py-0.5 bg-red-100 text-red-600 text-[10px] rounded border border-red-300">HARDCODED</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="text-green-700 min-w-[60px]">Chapter</span>
@@ -157,7 +156,6 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
               <div className="flex items-center gap-2 px-4 py-2 bg-green-100 rounded-lg">
                 <CheckCircle className="w-5 h-5 text-green-700" />
                 <span className="text-green-900">{product.confidence}% Confidence</span>
-                <span className="px-1.5 py-0.5 bg-green-200 text-green-800 text-xs rounded border border-green-400">DB</span>
               </div>
             </div>
             <div className="flex items-center gap-2 text-sm text-green-700">
@@ -177,7 +175,6 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
               <div className="flex items-center gap-2 mb-2 text-slate-700">
                 <Package className="w-5 h-5" />
                 <span>Materials & Composition</span>
-                <span className="px-1.5 py-0.5 bg-green-200 text-green-800 text-xs rounded border border-green-400">DB</span>
               </div>
               <p className="text-slate-900 text-sm">{product.materials}</p>
             </div>
@@ -186,7 +183,6 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
               <div className="flex items-center gap-2 mb-2 text-slate-700">
                 <MapPin className="w-5 h-5" />
                 <span>Country of Origin</span>
-                <span className="px-1.5 py-0.5 bg-green-200 text-green-800 text-xs rounded border border-green-400">DB</span>
               </div>
               <p className="text-slate-900 text-sm">{product.origin}</p>
             </div>
@@ -195,7 +191,6 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
               <div className="flex items-center gap-2 mb-2 text-slate-700">
                 <DollarSign className="w-5 h-5" />
                 <span>Unit Cost</span>
-                <span className="px-1.5 py-0.5 bg-green-200 text-green-800 text-xs rounded border border-green-400">DB</span>
               </div>
               <p className="text-slate-900 text-sm">{product.cost}</p>
             </div>
@@ -204,7 +199,6 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
               <div className="flex items-center gap-2 mb-2 text-slate-700">
                 <FileText className="w-5 h-5" />
                 <span>Vendor</span>
-                <span className="px-1.5 py-0.5 bg-green-200 text-green-800 text-xs rounded border border-green-400">DB</span>
               </div>
               <p className="text-slate-900 text-sm">{product.vendor}</p>
             </div>
@@ -214,7 +208,6 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-3">
               <h3 className="text-slate-900">Trade Analysis</h3>
-              <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded border border-green-300">FROM DATABASE</span>
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
@@ -223,7 +216,6 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                   {product.tariffRate !== null && product.tariffRate !== undefined
                     ? `${(product.tariffRate * 100).toFixed(2)}%`
                     : 'N/A'}
-                  <span className="px-1.5 py-0.5 bg-green-200 text-green-800 text-xs rounded border border-green-400">DB</span>
                 </span>
               </div>
               <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
@@ -232,7 +224,6 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                   {product.tariffAmount !== null && product.tariffAmount !== undefined
                     ? `$${product.tariffAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                     : 'N/A'}
-                  <span className="px-1.5 py-0.5 bg-green-200 text-green-800 text-xs rounded border border-green-400">DB</span>
                 </span>
               </div>
               <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
@@ -243,7 +234,6 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                     : product.unitCost && product.tariffAmount
                     ? `$${(Number(product.unitCost) + Number(product.tariffAmount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                     : 'N/A'}
-                  <span className="px-1.5 py-0.5 bg-green-200 text-green-800 text-xs rounded border border-green-400">DB</span>
                 </span>
               </div>
               {product.alternateClassification && (
@@ -251,7 +241,6 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                   <span className="text-amber-900 text-sm">Alternate Classification</span>
                   <span className="text-amber-700 flex items-center gap-2">
                     {product.alternateClassification}
-                    <span className="px-1.5 py-0.5 bg-green-200 text-green-800 text-xs rounded border border-green-400">DB</span>
                   </span>
                 </div>
               )}
@@ -262,27 +251,23 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-3">
               <h3 className="text-slate-900">Classification History</h3>
-              <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded border border-green-300">FROM DATABASE</span>
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
                 <div>
                   <div className="text-slate-900 text-sm flex items-center gap-2">
                     <span>HTS {product.hts}</span>
-                    <span className="px-1.5 py-0.5 bg-green-200 text-green-800 text-xs rounded border border-green-400">DB</span>
                   </div>
                   {/* HARDCODED: "Classified by AI Agent" - No field in DB for classifier name/type */}
                   {/* TODO: Add classifier_type or classified_by field to user_product_classification_results */}
                   <div className="text-slate-600 text-xs flex items-center gap-2">
                     <span>Classified by AI Agent</span>
-                    <span className="px-2 py-1 bg-red-200 text-red-800 text-xs font-semibold rounded border-2 border-red-400">⚠️ HARDCODED</span>
+                    <span className="px-1 py-0.5 bg-red-100 text-red-600 text-[10px] rounded border border-red-300">HARDCODED</span>
                     <span className="text-slate-500">• Confidence: {product.confidence}%</span>
-                    <span className="px-1.5 py-0.5 bg-green-200 text-green-800 text-xs rounded border border-green-400">DB</span>
                   </div>
                 </div>
                 <div className="text-slate-600 text-sm flex items-center gap-2">
                   <span>{new Date(product.lastUpdated).toLocaleDateString()}</span>
-                  <span className="px-1.5 py-0.5 bg-green-200 text-green-800 text-xs rounded border border-green-400">DB</span>
                 </div>
               </div>
             </div>
@@ -294,7 +279,7 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
             <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-5 py-3 border-b border-indigo-100">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="text-indigo-900">Classification Reasoning for Customs Validation</h3>
-                <span className="px-2 py-1 bg-red-200 text-red-800 text-xs font-semibold rounded border-2 border-red-400">⚠️ ENTIRE SECTION HARDCODED</span>
+                <span className="px-1 py-0.5 bg-red-100 text-red-600 text-[10px] rounded border border-red-300">HARDCODED</span>
               </div>
               <p className="text-indigo-700 text-sm">Detailed justification for HTS {product.hts}</p>
             </div>
@@ -306,7 +291,7 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm">1</div>
                   <h4 className="text-slate-900">Classification Decision</h4>
-                  <span className="px-2 py-1 bg-red-200 text-red-800 text-xs font-semibold rounded border-2 border-red-400">⚠️ HARDCODED</span>
+                  <span className="px-1 py-0.5 bg-red-100 text-red-600 text-[10px] rounded border border-red-300">HARDCODED</span>
                 </div>
                 <div className="ml-8 p-4 bg-slate-50 rounded-lg">
                   <p className="text-slate-700 text-sm mb-3">
@@ -334,7 +319,7 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm">2</div>
                   <h4 className="text-slate-900">General Rules of Interpretation (GRI)</h4>
-                  <span className="px-2 py-1 bg-red-200 text-red-800 text-xs font-semibold rounded border-2 border-red-400">⚠️ HARDCODED</span>
+                  <span className="px-1 py-0.5 bg-red-100 text-red-600 text-[10px] rounded border border-red-300">HARDCODED</span>
                 </div>
                 <div className="ml-8 space-y-2">
                   <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
@@ -369,8 +354,7 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                   {/* HARDCODED: Material composition analysis text - No field in DB for analysis text */}
                   {/* TODO: Fetch from material_analysis field or reasoning field */}
                   <div className="mb-2">
-                    <span className="px-2 py-1 bg-red-200 text-red-800 text-xs font-semibold rounded border-2 border-red-400">⚠️ Analysis Text HARDCODED</span>
-                    <span className="ml-2 px-1.5 py-0.5 bg-green-200 text-green-800 text-xs rounded border border-green-400">Materials: DB</span>
+                    <span className="px-1 py-0.5 bg-red-100 text-red-600 text-[10px] rounded border border-red-300">HARDCODED</span>
                   </div>
                   <p className="text-slate-600 text-sm">
                     Material composition has been verified to meet the requirements for classification under this HTS code. The predominant material determines the appropriate subheading according to Section Notes and Chapter Notes.
@@ -389,8 +373,7 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                   {/* HARDCODED: Country of origin impact text and tariff rate info - No field in DB for this analysis */}
                   {/* TODO: Fetch from origin_analysis field or reasoning field */}
                   <div className="mb-2">
-                    <span className="px-2 py-1 bg-red-200 text-red-800 text-xs font-semibold rounded border-2 border-red-400">⚠️ Analysis Text HARDCODED</span>
-                    <span className="ml-2 px-1.5 py-0.5 bg-green-200 text-green-800 text-xs rounded border border-green-400">Origin & Tariff: DB</span>
+                    <span className="px-1 py-0.5 bg-red-100 text-red-600 text-[10px] rounded border border-red-300">HARDCODED</span>
                   </div>
                   <p className="text-slate-600 text-sm mb-3">
                     Country of origin affects duty rates and trade agreement eligibility. For products from {product.origin}, the following apply:
@@ -409,7 +392,7 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                     <div className="flex items-center gap-2 text-sm">
                       <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
                       <span className="text-slate-600">Special tariff programs may apply</span>
-                      <span className="px-2 py-1 bg-red-200 text-red-800 text-xs font-semibold rounded border-2 border-red-400">⚠️ HARDCODED</span>
+                      <span className="px-1 py-0.5 bg-red-100 text-red-600 text-[10px] rounded border border-red-300">HARDCODED</span>
                     </div>
                   </div>
                 </div>
@@ -421,7 +404,7 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm">5</div>
                   <h4 className="text-slate-900">Alternative Classifications Considered</h4>
-                  <span className="px-2 py-1 bg-red-200 text-red-800 text-xs font-semibold rounded border-2 border-red-400">⚠️ HARDCODED</span>
+                  <span className="px-1 py-0.5 bg-red-100 text-red-600 text-[10px] rounded border border-red-300">HARDCODED</span>
                 </div>
                 <div className="ml-8 space-y-2">
                   {/* HARDCODED: Alternative classification reasoning - No field in DB for rejection reasons */}
@@ -437,12 +420,11 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                 </div>
               </div>
 
-              {/* Supporting Documentation - FROM DATABASE */}
+              {/* Supporting Documentation */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm">6</div>
                   <h4 className="text-slate-900">Supporting Documentation</h4>
-                  <span className="px-1.5 py-0.5 bg-green-200 text-green-800 text-xs rounded border border-green-400">DB</span>
                 </div>
                 <div className="ml-8 space-y-2">
                   {isLoadingDocs ? (
@@ -485,7 +467,7 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
               {/* TODO: Fetch from compliance_notes field or make configurable */}
               <div className="border-t border-slate-200 pt-4">
                 <div className="mb-2">
-                  <span className="px-2 py-1 bg-red-200 text-red-800 text-xs font-semibold rounded border-2 border-red-400">⚠️ HARDCODED</span>
+                  <span className="px-1 py-0.5 bg-red-100 text-red-600 text-[10px] rounded border border-red-300">HARDCODED</span>
                 </div>
                 <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
                   <div className="flex items-start gap-2">

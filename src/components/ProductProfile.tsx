@@ -485,7 +485,7 @@ export function ProductProfile() {
                   {/* HARDCODED: HTS Chapter/Heading/Subheading descriptions - No fields in DB for these descriptions */}
                   <div className="space-y-1 text-xs mb-3">
                     <div className="mb-1">
-                      <span className="px-2 py-1 bg-red-200 text-red-800 text-xs font-semibold rounded border-2 border-red-400">⚠️ HARDCODED</span>
+                      <span className="px-1 py-0.5 bg-red-100 text-red-600 text-[10px] rounded border border-red-300">HARDCODED</span>
                     </div>
                     <div className="flex items-start gap-2">
                       <span className="text-green-700 min-w-[60px]">Chapter</span>
@@ -623,7 +623,7 @@ export function ProductProfile() {
                         {/* HARDCODED: "Classified by AI Agent" - No field in DB for classifier name/type */}
                         <div className="text-slate-600 flex items-center gap-2">
                           <span>Classified by AI Agent</span>
-                          <span className="px-2 py-1 bg-red-200 text-red-800 text-xs font-semibold rounded border-2 border-red-400">⚠️ HARDCODED</span>
+                          <span className="px-1 py-0.5 bg-red-100 text-red-600 text-[10px] rounded border border-red-300">HARDCODED</span>
                         </div>
                       </div>
                       <div className="text-slate-600">{new Date(selectedProduct.lastUpdated).toLocaleDateString()}</div>
