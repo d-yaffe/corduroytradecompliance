@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { ExceptionReview } from './ExceptionReview';
 import { supabase } from '../lib/supabase';
 import { getExceptions, getRecentActivity, getDashboardStats } from '../lib/dashboardService';
+import { saveClassificationApproval } from '../lib/classificationService';
 
 interface DashboardProps {
   onNavigate: (view: 'dashboard' | 'classify' | 'bulk' | 'profile' | 'activity') => void;
@@ -118,12 +119,32 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     }
   };
 
-  const handleResolveException = (exception: any) => {
-    setResolvedItems(prev => [...prev, exception]);
-    setLastResolvedItem(exception);
-    setShowSuccessNotification(true);
-    setActiveExceptions(prev => prev.filter(item => item.id !== exception.id));
-    setSelectedException(null);
+  const handleResolveException = async (exception: any) => {
+    try {
+      // Save approval to database
+      if (exception.product_id && exception.classification_result_id) {
+        await saveClassificationApproval(
+          exception.product_id,
+          exception.classification_result_id,
+          true // approved = true
+        );
+      }
+
+      // Update local state
+      setResolvedItems(prev => [...prev, exception]);
+      setLastResolvedItem(exception);
+      setShowSuccessNotification(true);
+      setActiveExceptions(prev => prev.filter(item => item.id !== exception.id));
+      setSelectedException(null);
+    } catch (error) {
+      console.error('Error approving exception:', error);
+      // Still update UI even if database save fails (user will see it again on refresh)
+      setResolvedItems(prev => [...prev, exception]);
+      setLastResolvedItem(exception);
+      setShowSuccessNotification(true);
+      setActiveExceptions(prev => prev.filter(item => item.id !== exception.id));
+      setSelectedException(null);
+    }
   };
 
   return (

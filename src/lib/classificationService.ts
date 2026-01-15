@@ -197,6 +197,59 @@ export async function saveClassificationResult(
 }
 
 /**
+ * Save approval/rejection to classification history
+ */
+export async function saveClassificationApproval(
+  productId: number,
+  classificationResultId: number,
+  approved: boolean
+): Promise<void> {
+  try {
+    // Check if approval record already exists
+    const { data: existing } = await supabase
+      .from('user_product_classification_history')
+      .select('id')
+      .eq('product_id', productId)
+      .eq('classification_result_id', classificationResultId)
+      .single();
+
+    if (existing) {
+      // Update existing record
+      const { error } = await supabase
+        .from('user_product_classification_history')
+        .update({
+          approved: approved,
+          approved_at: approved ? new Date().toISOString() : null,
+        })
+        .eq('id', existing.id);
+
+      if (error) {
+        console.error('Error updating classification approval:', error);
+        throw error;
+      }
+    } else {
+      // Insert new record
+      const { error } = await supabase
+        .from('user_product_classification_history')
+        .insert({
+          product_id: productId,
+          classification_result_id: classificationResultId,
+          approved: approved,
+          approved_at: approved ? new Date().toISOString() : null,
+        });
+
+      if (error) {
+        console.error('Error saving classification approval:', error);
+        throw error;
+      }
+    }
+  } catch (error) {
+    console.error('Error saving classification approval:', error);
+    throw error;
+  }
+}
+
+/**
  * Get classification run with conversations
  */
 export async function getClassificationRun(runId: number): Promise<ClassificationRun | null> {
@@ -218,5 +271,7 @@ export async function getClassificationRun(runId: number): Promise<Classificatio
     return null;
   }
 }
+
+
 
 
