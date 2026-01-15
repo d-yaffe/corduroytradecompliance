@@ -75,7 +75,10 @@ export default function App() {
       // Only auto-login on SIGNED_IN event, not on every state change
       // This prevents auto-login when user is already on login page
       if (_event === 'SIGNED_IN' && session) {
-        loadUserData(session.user);
+        // Only auto-login if not already authenticated and not on login page
+        if (!isAuthenticated && authView !== 'login') {
+          loadUserData(session.user);
+        }
       } else if (_event === 'SIGNED_OUT' || !session) {
         // Session ended, log out
         setIsAuthenticated(false);
@@ -89,17 +92,35 @@ export default function App() {
     };
   }, []);
 
+  // Clear skipAutoLogin flag when user navigates to login page
+  useEffect(() => {
+    if (authView === 'login') {
+      // Clear the flag when user is on login page (they want to log in manually)
+      sessionStorage.removeItem('skipAutoLogin');
+    }
+  }, [authView]);
+
   const checkSession = async () => {
     try {
       // Check if user explicitly wants to skip auto-login (e.g., after logout)
       const skipAutoLogin = sessionStorage.getItem('skipAutoLogin') === 'true';
       
+      // Clear skipAutoLogin flag if user is on login page (they want to log in manually)
+      if (authView === 'login' && skipAutoLogin) {
+        sessionStorage.removeItem('skipAutoLogin');
+      }
+      
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user && !skipAutoLogin) {
-        // Only auto-login if user hasn't explicitly skipped it
+      
+      // Only auto-login if:
+      // 1. Session exists
+      // 2. User hasn't explicitly skipped auto-login
+      // 3. User is NOT on the login page (they want to log in manually)
+      if (session?.user && !skipAutoLogin && authView !== 'login') {
+        // Only auto-login if user hasn't explicitly skipped it and is not on login page
         loadUserData(session.user);
-      } else if (skipAutoLogin) {
-        // Clear the flag after checking
+      } else if (skipAutoLogin && authView !== 'login') {
+        // Clear the flag after checking (only if not on login page)
         sessionStorage.removeItem('skipAutoLogin');
       }
     } catch (error) {
@@ -153,24 +174,40 @@ export default function App() {
         code: error?.code,
         details: error?.details
       });
-      // Fallback to basic user data if metadata fetch fails
-      setUser({
-        id: supabaseUser.id,
-        email: supabaseUser.email || '',
-        firstName: supabaseUser.user_metadata?.first_name,
-        lastName: supabaseUser.user_metadata?.last_name,
-        company: supabaseUser.user_metadata?.company,
-        hasCompletedOnboarding: true,
-      });
-      setIsAuthenticated(true);
+      
+      // Only use fallback if it's a non-critical error (like metadata fetch failure)
+      // For critical errors, re-throw to let the caller handle it
+      const isCriticalError = error?.code === 'AUTH_ERROR' || error?.message?.includes('authentication');
+      
+      if (!isCriticalError) {
+        // Fallback to basic user data if metadata fetch fails (non-critical)
+        setUser({
+          id: supabaseUser.id,
+          email: supabaseUser.email || '',
+          firstName: supabaseUser.user_metadata?.first_name,
+          lastName: supabaseUser.user_metadata?.last_name,
+          company: supabaseUser.user_metadata?.company,
+          hasCompletedOnboarding: true,
+        });
+        setIsAuthenticated(true);
+      } else {
+        // Re-throw critical authentication errors
+        throw error;
+      }
     }
   };
 
   // Authentication handlers
-  const handleLogin = (supabaseUser: any) => {
+  const handleLogin = async (supabaseUser: any) => {
     // Clear skip auto-login flag on successful login
     sessionStorage.removeItem('skipAutoLogin');
-    loadUserData(supabaseUser);
+    try {
+      await loadUserData(supabaseUser);
+    } catch (error) {
+      console.error('Error during login:', error);
+      // Re-throw error so LoginForm can display it
+      throw error;
+    }
   };
 
   const handleSignUp = async (data: SignUpData) => {

@@ -41,18 +41,31 @@ export function LoginForm({ onLogin, onSwitchToSignUp, onSwitchToResetPassword }
       });
 
       if (signInError) {
-        setError(signInError.message || 'Invalid email or password');
+        // Show clear error message
+        const errorMessage = signInError.message || 'Invalid email or password';
+        setError(errorMessage);
         setIsLoading(false);
         return;
       }
 
       if (data.user) {
-        // Pass Supabase Auth user data directly
-        onLogin(data.user);
+        try {
+          // Pass Supabase Auth user data directly
+          await onLogin(data.user);
+          // If onLogin succeeds, user will be logged in
+        } catch (loginError: any) {
+          // Handle errors from loadUserData
+          setError(loginError?.message || 'Login successful but failed to load user data. Please try again.');
+          setIsLoading(false);
+        }
+      } else {
+        setError('Login failed. Please try again.');
+        setIsLoading(false);
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred during login');
-    } finally {
+      // Handle unexpected errors
+      const errorMessage = err?.message || 'An unexpected error occurred during login. Please try again.';
+      setError(errorMessage);
       setIsLoading(false);
     }
   };
