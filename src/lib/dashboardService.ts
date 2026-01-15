@@ -523,7 +523,9 @@ export async function getProductProfiles(userId: string): Promise<ProductProfile
 
         return {
           id: profile.id, // Use profile ID
+          productId: product.id, // Add actual product_id for fetching documents
           name: product.product_name || 'Unnamed Product',
+          description: product.product_description || '', // Add product description
           sku: `PROD-${product.id}`,
           hts: hts || 'N/A',
           materials: materialsStr,

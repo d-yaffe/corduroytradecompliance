@@ -8,7 +8,9 @@ import { getProductProfiles } from '../lib/dashboardService';
 
 interface Product {
   id: number;
+  productId?: number; // Actual product_id for fetching documents
   name: string;
+  description?: string; // Product description from DB
   sku: string;
   hts: string;
   materials: string;

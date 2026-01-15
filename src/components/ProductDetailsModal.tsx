@@ -1,4 +1,6 @@
 import { X, Package, MapPin, DollarSign, FileText, Calendar, CheckCircle, AlertCircle, Download, ExternalLink } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
 interface ProductDetailsModalProps {
   product: any;
@@ -6,7 +8,56 @@ interface ProductDetailsModalProps {
   onEdit?: () => void;
 }
 
+interface Document {
+  id: number;
+  document_type: string;
+  file_name: string;
+  file_type: string;
+  file_url: string;
+  uploaded_at: string;
+}
+
 export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetailsModalProps) {
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [isLoadingDocs, setIsLoadingDocs] = useState(true);
+
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      if (!product?.productId) {
+        setIsLoadingDocs(false);
+        return;
+      }
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setIsLoadingDocs(false);
+          return;
+        }
+
+        const { data: docs, error } = await supabase
+          .from('user_product_documents')
+          .select('id, document_type, file_name, file_type, file_url, uploaded_at')
+          .eq('product_id', product.productId)
+          .eq('user_id', user.id)
+          .order('uploaded_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching documents:', error);
+          setDocuments([]);
+        } else {
+          setDocuments(docs || []);
+        }
+      } catch (error) {
+        console.error('Error fetching documents:', error);
+        setDocuments([]);
+      } finally {
+        setIsLoadingDocs(false);
+      }
+    };
+
+    fetchDocuments();
+  }, [product?.productId]);
   const handleExportPDF = () => {
     // Create a printable version of the classification reasoning
     window.print();
@@ -26,6 +77,9 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
           <div>
             <h2 className="text-slate-900">{product.name}</h2>
             <p className="text-slate-600 text-sm">SKU: {product.sku}</p>
+            {product.description && (
+              <p className="text-slate-500 text-xs mt-1">{product.description}</p>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -37,18 +91,6 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
-          {/* Data Source Legend */}
-          <div className="mb-4 p-3 bg-slate-100 rounded-lg border border-slate-300 flex items-center gap-4 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-1 bg-green-200 text-green-800 rounded border border-green-400 font-semibold">DB</span>
-              <span className="text-slate-700">= From Database</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-1 bg-red-200 text-red-800 rounded border-2 border-red-400 font-semibold">⚠️ HARDCODED</span>
-              <span className="text-slate-700">= Hardcoded (Not from Database)</span>
-            </div>
-          </div>
-
           {/* Classification Card */}
           <div className="mb-6 p-5 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl">
             <div className="flex items-center justify-between mb-4">
@@ -395,27 +437,47 @@ export function ProductDetailsModal({ product, onClose, onEdit }: ProductDetails
                 </div>
               </div>
 
-              {/* HARDCODED: Supporting Documentation list - No field in DB for document list */}
-              {/* TODO: Fetch actual documents from user_product_documents table for this product */}
+              {/* Supporting Documentation - FROM DATABASE */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm">6</div>
                   <h4 className="text-slate-900">Supporting Documentation</h4>
-                  <span className="px-2 py-1 bg-red-200 text-red-800 text-xs font-semibold rounded border-2 border-red-400">⚠️ HARDCODED - Should fetch from DB</span>
+                  <span className="px-1.5 py-0.5 bg-green-200 text-green-800 text-xs rounded border border-green-400">DB</span>
                 </div>
                 <div className="ml-8 space-y-2">
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-900">✓ Product specification sheet</p>
-                  </div>
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-900">✓ Material composition certificate</p>
-                  </div>
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-900">✓ Country of origin documentation</p>
-                  </div>
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-900">✓ Vendor certification</p>
-                  </div>
+                  {isLoadingDocs ? (
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                      <p className="text-sm text-slate-600">Loading documents...</p>
+                    </div>
+                  ) : documents.length > 0 ? (
+                    documents.map((doc) => (
+                      <div key={doc.id} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-blue-900 font-medium">{doc.file_name}</p>
+                            <p className="text-xs text-blue-700 mt-1">
+                              {doc.document_type} • {new Date(doc.uploaded_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          {doc.file_url && (
+                            <a
+                              href={doc.file_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="ml-2 p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-100 rounded transition-colors"
+                              title="View document"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                      <p className="text-sm text-slate-600">No documents uploaded for this product</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
